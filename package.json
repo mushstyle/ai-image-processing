@@ -1,0 +1,17 @@
+{
+  "name": "ai-image-processing",
+  "version": "1.0.0",
+  "description": "Simple API endpoint server for AI image processing",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "openai": "^4.74.0"
+  }
+}
