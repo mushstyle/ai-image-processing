@@ -10,7 +10,7 @@ import {
 } from './utils/image.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir, urlOnly } = options
+  const { outputFile, outputDir } = options
   
   try {
     let imageBuffer
@@ -44,25 +44,14 @@ async function editImage(imagePath, prompt, options = {}) {
       console.log(`📝 Revised prompt: ${response.data[0].revised_prompt}`)
     }
     
-    // If user wants URL only and we got a URL, return it
-    if (urlOnly && response.data[0].url) {
-      console.log(`🔗 Generated image URL: ${response.data[0].url}`)
-      return response.data[0].url
-    }
-    
-    // Otherwise, download and save the image
+    // gpt-image-1 always returns base64 data
     const outputPath = generateOutputFilename(outputFile, outputDir)
     
     if (response.data[0].b64_json) {
       saveBase64Image(response.data[0].b64_json, outputPath)
       console.log(`💾 Saved edited image to: ${outputPath}`)
-    } else if (response.data[0].url) {
-      console.log('📥 Downloading edited image from URL...')
-      const editedImageBuffer = await fetchImageFromUrl(response.data[0].url)
-      saveBase64Image(editedImageBuffer.toString('base64'), outputPath)
-      console.log(`💾 Saved edited image to: ${outputPath}`)
     } else {
-      throw new Error('Unexpected response format from OpenAI API')
+      throw new Error('No base64 data in response from OpenAI API')
     }
     
     return outputPath
@@ -85,7 +74,6 @@ function parseCustomArgs(args) {
     prompt: null,
     output: null,
     'output-dir': null,
-    'url-only': false,
     help: false
   }
   
@@ -100,9 +88,7 @@ function parseCustomArgs(args) {
     if (arg.startsWith('--')) {
       const [key, value] = arg.slice(2).split('=')
       
-      if (key === 'url-only' && !value) {
-        parsed['url-only'] = true
-      } else if (key in parsed) {
+      if (key in parsed) {
         parsed[key] = value || true
       }
     } else if (arg.startsWith('-')) {
@@ -132,7 +118,6 @@ Options:
   --prompt=<text>     Text description of desired edits (required, max 32000 chars)
   --output=<filename> Custom output filename (optional)
   --output-dir=<dir>  Directory to save the output file (optional)
-  --url-only          Return only the URL without downloading (optional)
   -h, --help          Show this help message
 
 Examples:
@@ -145,9 +130,6 @@ Examples:
   
   # Save to specific directory
   npm run edit -- --url="image.jpg" --prompt="Add effects" --output-dir="./edited"
-  
-  # Get URL only (don't download)
-  npm run edit -- --url="image.jpg" --prompt="Add effects" --url-only
 `)
     process.exit(values.help ? 0 : 1)
   }
@@ -168,8 +150,7 @@ Examples:
   
   await editImage(values.url, values.prompt, {
     outputFile: values.output,
-    outputDir: values['output-dir'],
-    urlOnly: values['url-only']
+    outputDir: values['output-dir']
   })
 }
 

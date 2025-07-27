@@ -1,5 +1,5 @@
-import { writeFileSync, readFileSync, existsSync } from 'fs'
-import { basename, resolve } from 'path'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
+import { basename, resolve, dirname } from 'path'
 
 export async function fetchImageFromUrl(url) {
   try {
@@ -53,6 +53,13 @@ export function generateOutputFilename(customName = null, outputDir = null) {
 
 export function saveBase64Image(base64Data, outputPath) {
   const buffer = Buffer.from(base64Data, 'base64')
+  
+  // Create directory if it doesn't exist
+  const dir = dirname(outputPath)
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true })
+  }
+  
   writeFileSync(outputPath, buffer)
   return outputPath
 }
