@@ -1,40 +1,79 @@
-# AI Image Processing API
+# AI Image Processing
 
-Simple Express server that accepts text + image URL and processes them via AI.
+A Node.js tool for editing images using OpenAI's gpt-image-1 model.
+
+## Features
+
+- Edit images from URLs or local files
+- Uses OpenAI's powerful gpt-image-1 model
+- Saves edited images with timestamped filenames
+- Support for custom output filenames
 
 ## Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Create a `.env` file with your OpenAI API key:
+   ```
+   OPENAI_API_KEY=your-api-key-here
+   ```
+
+## Usage
+
+### Edit Image from URL
+
 ```bash
-npm install
-cp .env.example .env  # Edit with your API credentials
+npm run edit -- --url="https://example.com/image.jpg" --prompt="Add a sunset background"
 ```
 
-## Run
+### Edit Local Image
+
 ```bash
-npm run dev  # Development with auto-reload
-npm start    # Production
+npm run edit -- --url="./photo.png" --prompt="Make it look vintage"
+npm run edit -- --url="/path/to/image.jpg" --prompt="Add a blue sky" --output="sky.png"
 ```
 
-## API
-POST `/api/process`
-```json
-{
-  "text": "your text",
-  "imageUrl": "https://example.com/image.jpg"
-}
+### Options
+
+- `--url=<path>` - Path to local image file or URL of source image (required)
+- `--prompt=<text>` - Text description of desired edits (required, max 32000 chars)
+- `--output=<filename>` - Custom output filename (optional)
+- `--output-dir=<dir>` - Directory to save the output file (optional)
+- `--url-only` - Return only the URL without downloading (optional)
+- `-h, --help` - Show help message
+
+## Examples
+
+```bash
+# Add a green triangle to a shirt
+npm run edit -- --url="https://static.zara.net/assets/public/2b9d/d8f6/1f004ccfa87c/90c09a8b0868/01887455915-e1/01887455915-e1.jpg?ts=1751531694673&w=2912" --prompt="add a green triangle to the front of the shirt"
+
+# Edit a local screenshot
+npm run edit -- --url="./screenshot.png" --prompt="highlight the button in red"
+
+# Save to specific directory
+npm run edit -- --url="image.jpg" --prompt="Add vintage filter" --output-dir="./edited"
+
+# Get URL only (don't download)
+npm run edit -- --url="photo.png" --prompt="Remove background" --url-only
+
+# Combine output filename and directory
+npm run edit -- --url="photo.jpg" --prompt="Add frame" --output="framed.png" --output-dir="./results"
 ```
 
-## Environment Variables
-- `OPENAI_API_KEY` - Your OpenAI API key
-- `PORT` - Server port (default: 3000)
+## Supported Image Formats
 
-## GPT-Image-1 Limitations
-- **No image analysis**: GPT-Image-1 cannot analyze or modify existing images from URLs
-- **Text-only generation**: It only generates new images from text descriptions
-- **No direct editing**: Unlike DALL-E 2's edit endpoint, it cannot perform targeted modifications
-- **One image per request**: Currently limited to generating a single image per API call
-- **URL references ignored**: Including image URLs in prompts doesn't make the model analyze them
+- JPG/JPEG
+- PNG
+- GIF
+- WebP
+- BMP
 
-For image-to-image transformations, consider:
-1. Using GPT-4 Vision to analyze images first, then generate
-2. Using DALL-E 2's edit endpoint with actual image uploads
-3. Alternative services that support direct image modifications
+## Notes
+
+- Maximum image size: 50MB
+- Maximum prompt length: 32,000 characters
+- Edited images are saved in the current directory with timestamped filenames by default

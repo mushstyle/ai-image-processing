@@ -9,11 +9,21 @@ import {
   readLocalImage
 } from './utils/image.js'
 
-async function editImage(imageUrl, prompt, outputFile = null) {
+async function editImage(imagePath, prompt, options = {}) {
+  const { outputFile, outputDir, urlOnly } = options
+  
   try {
-    console.log('📥 Downloading image from URL...')
-    const imageBuffer = await fetchImageFromUrl(imageUrl)
-    console.log('✅ Image downloaded successfully')
+    let imageBuffer
+    
+    if (isLocalFile(imagePath)) {
+      console.log('📂 Reading local image file...')
+      imageBuffer = readLocalImage(imagePath)
+      console.log('✅ Image loaded successfully')
+    } else {
+      console.log('📥 Downloading image from URL...')
+      imageBuffer = await fetchImageFromUrl(imagePath)
+      console.log('✅ Image downloaded successfully')
+    }
     
     console.log('🔄 Converting image for OpenAI API...')
     const imageFile = await toFile(imageBuffer, 'source-image.png', { type: 'image/png' })
@@ -30,7 +40,18 @@ async function editImage(imageUrl, prompt, outputFile = null) {
     
     console.log('✅ Image edited successfully')
     
-    const outputPath = generateOutputFilename(outputFile)
+    if (response.data[0].revised_prompt) {
+      console.log(`📝 Revised prompt: ${response.data[0].revised_prompt}`)
+    }
+    
+    // If user wants URL only and we got a URL, return it
+    if (urlOnly && response.data[0].url) {
+      console.log(`🔗 Generated image URL: ${response.data[0].url}`)
+      return response.data[0].url
+    }
+    
+    // Otherwise, download and save the image
+    const outputPath = generateOutputFilename(outputFile, outputDir)
     
     if (response.data[0].b64_json) {
       saveBase64Image(response.data[0].b64_json, outputPath)
@@ -42,10 +63,6 @@ async function editImage(imageUrl, prompt, outputFile = null) {
       console.log(`💾 Saved edited image to: ${outputPath}`)
     } else {
       throw new Error('Unexpected response format from OpenAI API')
-    }
-    
-    if (response.data[0].revised_prompt) {
-      console.log(`📝 Revised prompt: ${response.data[0].revised_prompt}`)
     }
     
     return outputPath
@@ -61,43 +78,76 @@ async function editImage(imageUrl, prompt, outputFile = null) {
   }
 }
 
-async function main() {
-  const { values } = parseArgs({
-    options: {
-      url: {
-        type: 'string',
-        short: 'u'
-      },
-      prompt: {
-        type: 'string',
-        short: 'p'
-      },
-      output: {
-        type: 'string',
-        short: 'o'
-      },
-      help: {
-        type: 'boolean',
-        short: 'h'
+// Parse command line arguments manually to support = syntax
+function parseCustomArgs(args) {
+  const parsed = {
+    url: null,
+    prompt: null,
+    output: null,
+    'output-dir': null,
+    'url-only': false,
+    help: false
+  }
+  
+  for (let i = 2; i < args.length; i++) {
+    const arg = args[i]
+    
+    if (arg === '-h' || arg === '--help') {
+      parsed.help = true
+      continue
+    }
+    
+    if (arg.startsWith('--')) {
+      const [key, value] = arg.slice(2).split('=')
+      
+      if (key === 'url-only' && !value) {
+        parsed['url-only'] = true
+      } else if (key in parsed) {
+        parsed[key] = value || true
+      }
+    } else if (arg.startsWith('-')) {
+      const key = arg.slice(1)
+      const keyMap = { u: 'url', p: 'prompt', o: 'output' }
+      
+      if (keyMap[key] && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+        parsed[keyMap[key]] = args[++i]
       }
     }
-  })
+  }
+  
+  return parsed
+}
+
+async function main() {
+  const values = parseCustomArgs(process.argv)
   
   if (values.help || !values.url || !values.prompt) {
     console.log(`
 AI Image Editor - Edit images using OpenAI's gpt-image-1 model
 
-Usage: npm run edit -- --url <image-url> --prompt <edit-prompt> [options]
+Usage: npm run edit -- --url=<image-path-or-url> --prompt=<edit-prompt> [options]
 
 Options:
-  -u, --url      URL of the source image to edit (required)
-  -p, --prompt   Text description of desired edits (required, max 32000 chars)
-  -o, --output   Custom output filename (optional)
-  -h, --help     Show this help message
+  --url=<path>        Path to local image file or URL of source image (required)
+  --prompt=<text>     Text description of desired edits (required, max 32000 chars)
+  --output=<filename> Custom output filename (optional)
+  --output-dir=<dir>  Directory to save the output file (optional)
+  --url-only          Return only the URL without downloading (optional)
+  -h, --help          Show this help message
 
 Examples:
-  npm run edit -- --url "https://example.com/image.jpg" --prompt "Add a sunset background"
-  npm run edit -- -u "https://example.com/photo.png" -p "Make it look vintage" -o "vintage.png"
+  # Edit from URL
+  npm run edit -- --url="https://example.com/image.jpg" --prompt="Add a sunset background"
+  
+  # Edit local file
+  npm run edit -- --url="./photo.png" --prompt="Make it look vintage"
+  npm run edit -- --url="/path/to/image.jpg" --prompt="Add a blue sky" --output="sky.png"
+  
+  # Save to specific directory
+  npm run edit -- --url="image.jpg" --prompt="Add effects" --output-dir="./edited"
+  
+  # Get URL only (don't download)
+  npm run edit -- --url="image.jpg" --prompt="Add effects" --url-only
 `)
     process.exit(values.help ? 0 : 1)
   }
@@ -107,14 +157,20 @@ Examples:
     process.exit(1)
   }
   
-  try {
-    new URL(values.url)
-  } catch {
-    console.error('❌ Error: Invalid URL format')
-    process.exit(1)
+  if (!isLocalFile(values.url)) {
+    try {
+      new URL(values.url)
+    } catch {
+      console.error('❌ Error: Invalid URL format')
+      process.exit(1)
+    }
   }
   
-  await editImage(values.url, values.prompt, values.output)
+  await editImage(values.url, values.prompt, {
+    outputFile: values.output,
+    outputDir: values['output-dir'],
+    urlOnly: values['url-only']
+  })
 }
 
 main().catch(console.error)

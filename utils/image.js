@@ -29,18 +29,26 @@ export async function fetchImageFromUrl(url) {
   }
 }
 
-export function generateOutputFilename(customName = null) {
+export function generateOutputFilename(customName = null, outputDir = null) {
+  let filename
+  
   if (customName) {
-    return customName
+    filename = customName
+  } else {
+    const now = new Date()
+    const timestamp = now.toISOString()
+      .replace(/[:.]/g, '')
+      .replace('T', '_')
+      .slice(0, -1)
+    
+    filename = `edited_${timestamp}.png`
   }
   
-  const now = new Date()
-  const timestamp = now.toISOString()
-    .replace(/[:.]/g, '')
-    .replace('T', '_')
-    .slice(0, -1)
+  if (outputDir) {
+    return resolve(outputDir, filename)
+  }
   
-  return `edited_${timestamp}.png`
+  return filename
 }
 
 export function saveBase64Image(base64Data, outputPath) {
