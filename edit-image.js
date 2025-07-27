@@ -6,14 +6,11 @@ import {
   generateOutputFilename, 
   saveBase64Image,
   isLocalFile,
-  readLocalImage,
-  getImageDimensions,
-  optimizeImageForTiling
+  readLocalImage
 } from './utils/image.js'
-import { calculateImageTokens, calculateCost, formatCost } from './utils/token-calculator.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir, optimizeCost, quality, detail } = options
+  const { outputFile, outputDir, quality } = options
   
   try {
     let imageBuffer
@@ -28,31 +25,6 @@ async function editImage(imagePath, prompt, options = {}) {
       console.log('✅ Image downloaded successfully')
     }
     
-    // Optimize image if requested
-    if (optimizeCost) {
-      console.log('🔧 Optimizing image for cost savings...')
-      const optimized = await optimizeImageForTiling(imageBuffer)
-      
-      if (optimized.resized) {
-        imageBuffer = optimized.buffer
-        console.log(`✂️  Resized from ${optimized.originalDimensions.width}x${optimized.originalDimensions.height} to ${optimized.newDimensions.width}x${optimized.newDimensions.height}`)
-        console.log(`💰 Tile savings: ${optimized.originalTiles} → ${optimized.optimizedTiles} tiles (${optimized.tileSavings} tiles saved)`)
-      } else {
-        console.log('ℹ️  Image already optimally sized')
-      }
-    }
-    
-    // Calculate tokens and cost estimate before API call
-    console.log('📊 Calculating token usage...')
-    const tokenInfo = await calculateImageTokens(imageBuffer, detail || 'high')
-    const estimatedCost = calculateCost(tokenInfo.tokens)
-    
-    console.log(`📐 Image dimensions: ${tokenInfo.dimensions.width}x${tokenInfo.dimensions.height}`)
-    if (tokenInfo.tiles) {
-      console.log(`🔲 Tiles: ${tokenInfo.tiles.count} (scaled to ${tokenInfo.tiles.scaledDimensions.width}x${tokenInfo.tiles.scaledDimensions.height})`)
-    }
-    console.log(`🪙 Estimated tokens: ${tokenInfo.tokens.toLocaleString()} (${detail || 'high'} detail)`)
-    console.log(`💰 Estimated cost: ${formatCost(estimatedCost)}`)
     if (quality && quality !== 'auto') {
       console.log(`🎨 Quality setting: ${quality}`)
     }
@@ -64,21 +36,14 @@ async function editImage(imagePath, prompt, options = {}) {
     const client = getOpenAIClient()
     
     const startTime = Date.now()
-    const editParams = {
+    const response = await client.images.edit({
       model: 'gpt-image-1',
       image: imageFile,
       prompt: prompt,
       n: 1,
       size: '1024x1024',
       quality: quality || 'auto'
-    }
-    
-    // Add detail parameter if specified
-    if (detail) {
-      editParams.detail = detail
-    }
-    
-    const response = await client.images.edit(editParams)
+    })
     const duration = (Date.now() - startTime) / 1000
     
     console.log(`✅ Image edited successfully (${duration.toFixed(1)}s)`)
@@ -91,19 +56,8 @@ async function editImage(imagePath, prompt, options = {}) {
     const outputPath = generateOutputFilename(outputFile, outputDir)
     
     if (response.data[0].b64_json) {
-      // Check the output image dimensions
-      const outputBuffer = Buffer.from(response.data[0].b64_json, 'base64')
-      const outputDimensions = await getImageDimensions(outputBuffer)
-      console.log(`📏 Output image dimensions: ${outputDimensions.width}x${outputDimensions.height}`)
-      
       saveBase64Image(response.data[0].b64_json, outputPath)
       console.log(`💾 Saved edited image to: ${outputPath}`)
-      
-      // Show final cost summary
-      console.log('\n📊 Final Summary:')
-      console.log(`  • Tokens used: ${tokenInfo.tokens.toLocaleString()}`)
-      console.log(`  • Cost: ${formatCost(estimatedCost)}`)
-      console.log(`  • Processing time: ${duration.toFixed(1)}s`)
     } else {
       throw new Error('No base64 data in response from OpenAI API')
     }
@@ -128,9 +82,7 @@ function parseCustomArgs(args) {
     prompt: null,
     output: null,
     'output-dir': null,
-    'optimize-cost': false,
     quality: null,
-    detail: null,
     help: false
   }
   
@@ -175,9 +127,7 @@ Options:
   --prompt=<text>     Text description of desired edits (required, max 32000 chars)
   --output=<filename> Custom output filename (optional)
   --output-dir=<dir>  Directory to save the output file (optional)
-  --optimize-cost     Resize image to reduce API costs (optional)
   --quality=<level>   Image quality: auto, high, medium, or low (default: auto)
-  --detail=<level>    Detail level for tokenization: high or low (default: high)
   -h, --help          Show this help message
 
 Examples:
@@ -204,10 +154,6 @@ Examples:
     process.exit(1)
   }
   
-  if (values.detail && !['high', 'low'].includes(values.detail)) {
-    console.error('❌ Error: Invalid detail level. Must be: high or low')
-    process.exit(1)
-  }
   
   if (!isLocalFile(values.url)) {
     try {
@@ -221,9 +167,7 @@ Examples:
   await editImage(values.url, values.prompt, {
     outputFile: values.output,
     outputDir: values['output-dir'],
-    optimizeCost: values['optimize-cost'],
-    quality: values.quality,
-    detail: values.detail
+    quality: values.quality
   })
 }
 
