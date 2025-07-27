@@ -40,6 +40,7 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 | `--output=<name>` | Custom filename (default: `outputs/edited_[timestamp].png`) |
 | `--output-dir=<dir>` | Save directory (default: `outputs/`) |
 | `--optimize-cost` | Resize image to tile boundaries to reduce costs |
+| `--quality=<level>` | Image quality: `auto`, `high`, `medium`, or `low` (default: `auto`) |
 | `--help` | Show help |
 
 ### Examples
@@ -66,6 +67,12 @@ npm run edit -- --url="photo.jpg" --prompt="enhance colors" --optimize-cost
 # Automatically resizes to tile boundaries (multiples of 512px) to reduce API costs
 ```
 
+**High quality output:**
+```bash
+npm run edit -- --url="photo.jpg" --prompt="add details" --quality=high
+# Uses high quality setting for better results (may cost more)
+```
+
 ## Limitations
 
 - Max file size: 50MB
@@ -79,6 +86,7 @@ npm run edit -- --url="photo.jpg" --prompt="enhance colors" --optimize-cost
 - gpt-image-1 always returns base64-encoded images (not URLs)
 - The `--optimize-cost` flag resizes images to 512px tile boundaries to minimize token usage
 - Token costs are calculated and displayed before API calls
+- Quality levels: `auto` (default), `high` (best quality), `medium`, `low` (fastest/cheapest)
 
 ## Cost Information
 

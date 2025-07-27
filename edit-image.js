@@ -13,7 +13,7 @@ import {
 import { calculateImageTokens, calculateCost, formatCost } from './utils/token-calculator.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir, optimizeCost } = options
+  const { outputFile, outputDir, optimizeCost, quality } = options
   
   try {
     let imageBuffer
@@ -53,6 +53,9 @@ async function editImage(imagePath, prompt, options = {}) {
     }
     console.log(`🪙 Estimated tokens: ${tokenInfo.tokens.toLocaleString()}`)
     console.log(`💰 Estimated cost: ${formatCost(estimatedCost)}`)
+    if (quality && quality !== 'auto') {
+      console.log(`🎨 Quality setting: ${quality}`)
+    }
     
     console.log('🔄 Converting image for OpenAI API...')
     const imageFile = await toFile(imageBuffer, 'source-image.png', { type: 'image/png' })
@@ -66,7 +69,8 @@ async function editImage(imagePath, prompt, options = {}) {
       image: imageFile,
       prompt: prompt,
       n: 1,
-      size: '1024x1024'
+      size: '1024x1024',
+      quality: quality || 'auto'
     })
     const duration = (Date.now() - startTime) / 1000
     
@@ -118,6 +122,7 @@ function parseCustomArgs(args) {
     output: null,
     'output-dir': null,
     'optimize-cost': false,
+    quality: null,
     help: false
   }
   
@@ -163,6 +168,7 @@ Options:
   --output=<filename> Custom output filename (optional)
   --output-dir=<dir>  Directory to save the output file (optional)
   --optimize-cost     Resize image to reduce API costs (optional)
+  --quality=<level>   Image quality: auto, high, medium, or low (default: auto)
   -h, --help          Show this help message
 
 Examples:
@@ -184,6 +190,11 @@ Examples:
     process.exit(1)
   }
   
+  if (values.quality && !['auto', 'high', 'medium', 'low'].includes(values.quality)) {
+    console.error('❌ Error: Invalid quality level. Must be: auto, high, medium, or low')
+    process.exit(1)
+  }
+  
   if (!isLocalFile(values.url)) {
     try {
       new URL(values.url)
@@ -196,7 +207,8 @@ Examples:
   await editImage(values.url, values.prompt, {
     outputFile: values.output,
     outputDir: values['output-dir'],
-    optimizeCost: values['optimize-cost']
+    optimizeCost: values['optimize-cost'],
+    quality: values.quality
   })
 }
 
