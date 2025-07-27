@@ -81,6 +81,11 @@ export async function fetchImageFromUrl(url) {
 }
 
 export function generateOutputFilename(customName = null, outputDir = null) {
+  // If customName is an absolute path, use it directly
+  if (customName && (customName.startsWith('/') || customName.includes(':'))) {
+    return customName
+  }
+  
   let filename
   
   if (customName) {
