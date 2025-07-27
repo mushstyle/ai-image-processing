@@ -1,5 +1,12 @@
 # Pricing Optimization for Image Editing
 
+## Key Insight: Output is Always 1024×1024
+
+**Important**: The gpt-image-1 model always returns 1024×1024 images regardless of input size. This means:
+- Sending larger images costs more tokens but provides no quality benefit
+- The `--optimize-cost` flag can dramatically reduce costs with no impact on output quality
+- Input images are only used for style/content reference, not to determine output dimensions
+
 ## Pricing Formula
 
 The cost for image editing with gpt-image-1 is calculated as:
@@ -10,7 +17,8 @@ Cost = (Number of Tokens / 1,000,000) × $5.00
 
 Where:
 - **Token Price**: $5.00 per 1 million tokens
-- **Tokens per Image**: Based on image dimensions (see below)
+- **Tokens per Image**: Based on **input** image dimensions (see below)
+- **Output**: Always 1024×1024 regardless of input
 
 ### Example Calculations
 - 765 tokens = 765 ÷ 1,000,000 × $5.00 = **$0.0038**
@@ -33,7 +41,7 @@ Images are billed based on the number of 512×512 tiles they occupy. A 1023×102
 
 ### The Solution: Pre-resize to Tile Boundaries
 
-By resizing images to multiples of 512 pixels before sending to OpenAI, you can significantly reduce costs:
+Since gpt-image-1 always outputs 1024×1024 images, you can aggressively optimize input sizes without affecting output quality. By resizing images to multiples of 512 pixels before sending to OpenAI, you can significantly reduce costs:
 
 | Original Size | Tiles | Tokens | Cost | Optimized Size | Tiles | Tokens | Cost | Savings |
 |--------------|-------|--------|------|----------------|-------|--------|------|---------|
@@ -41,6 +49,13 @@ By resizing images to multiples of 512 pixels before sending to OpenAI, you can 
 | 1025×1025 | 9 | 1,615 | $0.0081 | 1024×1024 | 4 | 765 | $0.0038 | 53% |
 | 1500×1000 | 6 | 1,105 | $0.0055 | 1536×1024 | 6 | 1,105 | $0.0055 | 0% |
 | 1537×1000 | 8 | 1,445 | $0.0072 | 1536×1024 | 6 | 1,105 | $0.0055 | 24% |
+
+## Real-World Example
+
+A 742×628 image:
+- **Without optimization**: 2×2 = 4 tiles = 765 tokens = $0.0038
+- **With optimization** (resized to ~512×433): 1×1 = 1 tile = 255 tokens = $0.0013
+- **Savings**: 67% cost reduction, same 1024×1024 output!
 
 ## Implementation Recommendations
 
@@ -67,9 +82,11 @@ function optimizeImageSize(width, height) {
 
 ### 2. Quality vs Cost Trade-offs
 
-- **Upscaling** (e.g., 1000→1024): No quality loss, same tile count
-- **Slight downscaling** (e.g., 1025→1024): Minimal quality impact, major cost savings
-- **Aggressive downscaling**: Consider user tolerance and use case
+Since output is always 1024×1024:
+- **Input size doesn't affect output resolution** - only style/content reference quality
+- **Moderate downscaling** (up to 35%) has minimal impact on AI's understanding
+- **Aggressive optimization** can save 50-75% on costs with acceptable results
+- **Use `--optimize-cost` flag** to automatically find the best tile configuration
 
 ### 3. Best Practices
 

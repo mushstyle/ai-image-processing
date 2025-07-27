@@ -186,28 +186,79 @@ export async function getImageDimensions(buffer) {
 export async function optimizeImageForTiling(buffer) {
   const { width, height } = await sharp(buffer).metadata()
   
-  // Calculate optimal dimensions (round up to nearest 512)
-  let optWidth = Math.ceil(width / 512) * 512
-  let optHeight = Math.ceil(height / 512) * 512
+  // Calculate current tile usage
+  const widthTiles = Math.ceil(width / 512)
+  const heightTiles = Math.ceil(height / 512)
+  const originalTiles = widthTiles * heightTiles
   
-  // Check if we'd exceed OpenAI's 2048x2048 limit
-  if (optWidth > 2048 || optHeight > 2048) {
-    // Scale down proportionally to fit within 2048x2048
-    const scale = Math.min(2048 / optWidth, 2048 / optHeight)
-    optWidth = Math.floor(optWidth * scale)
-    optHeight = Math.floor(optHeight * scale)
+  
+  // Try different optimization strategies
+  const strategies = []
+  
+  // Strategy 1: Round down to tile boundaries (slight downscale)
+  if (width > 512 || height > 512) {
+    const downWidth = Math.floor(width / 512) * 512 || 512
+    const downHeight = Math.floor(height / 512) * 512 || 512
+    const downTiles = Math.ceil(downWidth / 512) * Math.ceil(downHeight / 512)
     
-    // Round to nearest 512 again after scaling
-    optWidth = Math.ceil(optWidth / 512) * 512
-    optHeight = Math.ceil(optHeight / 512) * 512
+    
+    if (downTiles < originalTiles && downWidth >= width * 0.65 && downHeight >= height * 0.65) {
+      strategies.push({
+        width: downWidth,
+        height: downHeight,
+        tiles: downTiles,
+        scaling: Math.min(downWidth / width, downHeight / height)
+      })
+    }
   }
   
-  // Check if resizing would save tiles
-  const originalTiles = Math.ceil(width / 512) * Math.ceil(height / 512)
-  const optimizedTiles = Math.ceil(optWidth / 512) * Math.ceil(optHeight / 512)
+  // Strategy 2: Maintain aspect ratio, try different tile configurations
+  const aspectRatio = width / height
   
-  // If no savings or if we'd be upscaling significantly, return original
-  if (optimizedTiles >= originalTiles || (optWidth > width * 1.1 && optHeight > height * 1.1)) {
+  // Try all possible tile combinations that save tiles
+  for (let wTiles = 1; wTiles <= Math.min(widthTiles, 4); wTiles++) {
+    for (let hTiles = 1; hTiles <= Math.min(heightTiles, 4); hTiles++) {
+      const totalTiles = wTiles * hTiles
+      if (totalTiles >= originalTiles) continue
+      
+      // Try fitting into this tile configuration
+      const maxWidth = wTiles * 512
+      const maxHeight = hTiles * 512
+      
+      let newWidth, newHeight
+      
+      // Scale to fit within the tile bounds while maintaining aspect ratio
+      if (width / maxWidth > height / maxHeight) {
+        // Width is the limiting factor
+        newWidth = maxWidth
+        newHeight = Math.round(maxWidth / aspectRatio)
+      } else {
+        // Height is the limiting factor
+        newHeight = maxHeight
+        newWidth = Math.round(maxHeight * aspectRatio)
+      }
+      
+      // Verify this actually fits in the tiles we allocated
+      const actualWTiles = Math.ceil(newWidth / 512)
+      const actualHTiles = Math.ceil(newHeight / 512)
+      const actualTiles = actualWTiles * actualHTiles
+      
+      // Only add if it saves tiles and doesn't shrink too much
+      if (actualTiles < originalTiles && 
+          newWidth >= width * 0.65 && 
+          newHeight >= height * 0.65) {
+        strategies.push({
+          width: newWidth,
+          height: newHeight,
+          tiles: actualTiles,
+          scaling: Math.min(newWidth / width, newHeight / height)
+        })
+      }
+    }
+  }
+  
+  // Pick the best strategy (most tiles saved with least scaling)
+  if (strategies.length === 0) {
     return {
       buffer,
       resized: false,
@@ -216,10 +267,19 @@ export async function optimizeImageForTiling(buffer) {
     }
   }
   
-  // Resize the image
+  // Sort by tiles (ascending) then by scaling (descending)
+  strategies.sort((a, b) => {
+    if (a.tiles !== b.tiles) return a.tiles - b.tiles
+    return b.scaling - a.scaling
+  })
+  
+  const best = strategies[0]
+  
+  // Resize the image maintaining aspect ratio
   const resizedBuffer = await sharp(buffer)
-    .resize(optWidth, optHeight, {
-      fit: 'fill',
+    .resize(best.width, best.height, {
+      fit: 'inside',
+      withoutEnlargement: true,
       kernel: 'lanczos3'
     })
     .toBuffer()
@@ -228,9 +288,9 @@ export async function optimizeImageForTiling(buffer) {
     buffer: resizedBuffer,
     resized: true,
     originalDimensions: { width, height },
-    newDimensions: { width: optWidth, height: optHeight },
+    newDimensions: { width: best.width, height: best.height },
     originalTiles: originalTiles,
-    optimizedTiles: optimizedTiles,
-    tileSavings: originalTiles - optimizedTiles
+    optimizedTiles: best.tiles,
+    tileSavings: originalTiles - best.tiles
   }
 }

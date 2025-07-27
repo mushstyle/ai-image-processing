@@ -65,7 +65,8 @@ async function editImage(imagePath, prompt, options = {}) {
       model: 'gpt-image-1',
       image: imageFile,
       prompt: prompt,
-      n: 1
+      n: 1,
+      size: '1024x1024'
     })
     const duration = (Date.now() - startTime) / 1000
     
@@ -79,6 +80,11 @@ async function editImage(imagePath, prompt, options = {}) {
     const outputPath = generateOutputFilename(outputFile, outputDir)
     
     if (response.data[0].b64_json) {
+      // Check the output image dimensions
+      const outputBuffer = Buffer.from(response.data[0].b64_json, 'base64')
+      const outputDimensions = await getImageDimensions(outputBuffer)
+      console.log(`📏 Output image dimensions: ${outputDimensions.width}x${outputDimensions.height}`)
+      
       saveBase64Image(response.data[0].b64_json, outputPath)
       console.log(`💾 Saved edited image to: ${outputPath}`)
       
