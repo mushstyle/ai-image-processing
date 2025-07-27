@@ -39,6 +39,7 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 | `--prompt=<text>` | Edit instructions **(required)** |
 | `--output=<name>` | Custom filename (default: `outputs/edited_[timestamp].png`) |
 | `--output-dir=<dir>` | Save directory (default: `outputs/`) |
+| `--optimize-cost` | Resize image to tile boundaries to reduce costs |
 | `--help` | Show help |
 
 ### Examples
@@ -59,6 +60,12 @@ npm run edit -- --url="https://example.com/image.jpg" --prompt="add sunset"
 npm run edit -- --url="pic.png" --prompt="remove background" --output="transparent.png" --output-dir="./edited"
 ```
 
+**Cost optimization:**
+```bash
+npm run edit -- --url="photo.jpg" --prompt="enhance colors" --optimize-cost
+# Automatically resizes to tile boundaries (multiples of 512px) to reduce API costs
+```
+
 ## Limitations
 
 - Max file size: 50MB
@@ -70,3 +77,11 @@ npm run edit -- --url="pic.png" --prompt="remove background" --output="transpare
 - Output directories are created automatically if they don't exist
 - OpenAI may revise your prompt for better results
 - gpt-image-1 always returns base64-encoded images (not URLs)
+- The `--optimize-cost` flag resizes images to 512px tile boundaries to minimize token usage
+- Token costs are calculated and displayed before API calls
+
+## Cost Information
+
+- **Pricing**: $5.00 per 1 million tokens
+- **Token calculation**: 85 + (170 × number of 512×512 tiles)
+- See [PRICING.md](PRICING.md) for detailed cost optimization strategies

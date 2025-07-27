@@ -7,12 +7,13 @@ import {
   saveBase64Image,
   isLocalFile,
   readLocalImage,
-  getImageDimensions
+  getImageDimensions,
+  optimizeImageForTiling
 } from './utils/image.js'
 import { calculateImageTokens, calculateCost, formatCost } from './utils/token-calculator.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir } = options
+  const { outputFile, outputDir, optimizeCost } = options
   
   try {
     let imageBuffer
@@ -25,6 +26,20 @@ async function editImage(imagePath, prompt, options = {}) {
       console.log('📥 Downloading image from URL...')
       imageBuffer = await fetchImageFromUrl(imagePath)
       console.log('✅ Image downloaded successfully')
+    }
+    
+    // Optimize image if requested
+    if (optimizeCost) {
+      console.log('🔧 Optimizing image for cost savings...')
+      const optimized = await optimizeImageForTiling(imageBuffer)
+      
+      if (optimized.resized) {
+        imageBuffer = optimized.buffer
+        console.log(`✂️  Resized from ${optimized.originalDimensions.width}x${optimized.originalDimensions.height} to ${optimized.newDimensions.width}x${optimized.newDimensions.height}`)
+        console.log(`💰 Tile savings: ${optimized.originalTiles} → ${optimized.optimizedTiles} tiles (${optimized.tileSavings} tiles saved)`)
+      } else {
+        console.log('ℹ️  Image already optimally sized')
+      }
     }
     
     // Calculate tokens and cost estimate before API call
@@ -96,6 +111,7 @@ function parseCustomArgs(args) {
     prompt: null,
     output: null,
     'output-dir': null,
+    'optimize-cost': false,
     help: false
   }
   
@@ -140,6 +156,7 @@ Options:
   --prompt=<text>     Text description of desired edits (required, max 32000 chars)
   --output=<filename> Custom output filename (optional)
   --output-dir=<dir>  Directory to save the output file (optional)
+  --optimize-cost     Resize image to reduce API costs (optional)
   -h, --help          Show this help message
 
 Examples:
@@ -172,7 +189,8 @@ Examples:
   
   await editImage(values.url, values.prompt, {
     outputFile: values.output,
-    outputDir: values['output-dir']
+    outputDir: values['output-dir'],
+    optimizeCost: values['optimize-cost']
   })
 }
 

@@ -182,3 +182,55 @@ export async function getImageDimensions(buffer) {
     throw new Error(`Failed to get image dimensions: ${error.message}`)
   }
 }
+
+export async function optimizeImageForTiling(buffer) {
+  const { width, height } = await sharp(buffer).metadata()
+  
+  // Calculate optimal dimensions (round up to nearest 512)
+  let optWidth = Math.ceil(width / 512) * 512
+  let optHeight = Math.ceil(height / 512) * 512
+  
+  // Check if we'd exceed OpenAI's 2048x2048 limit
+  if (optWidth > 2048 || optHeight > 2048) {
+    // Scale down proportionally to fit within 2048x2048
+    const scale = Math.min(2048 / optWidth, 2048 / optHeight)
+    optWidth = Math.floor(optWidth * scale)
+    optHeight = Math.floor(optHeight * scale)
+    
+    // Round to nearest 512 again after scaling
+    optWidth = Math.ceil(optWidth / 512) * 512
+    optHeight = Math.ceil(optHeight / 512) * 512
+  }
+  
+  // Check if resizing would save tiles
+  const originalTiles = Math.ceil(width / 512) * Math.ceil(height / 512)
+  const optimizedTiles = Math.ceil(optWidth / 512) * Math.ceil(optHeight / 512)
+  
+  // If no savings or if we'd be upscaling significantly, return original
+  if (optimizedTiles >= originalTiles || (optWidth > width * 1.1 && optHeight > height * 1.1)) {
+    return {
+      buffer,
+      resized: false,
+      originalDimensions: { width, height },
+      tiles: originalTiles
+    }
+  }
+  
+  // Resize the image
+  const resizedBuffer = await sharp(buffer)
+    .resize(optWidth, optHeight, {
+      fit: 'fill',
+      kernel: 'lanczos3'
+    })
+    .toBuffer()
+  
+  return {
+    buffer: resizedBuffer,
+    resized: true,
+    originalDimensions: { width, height },
+    newDimensions: { width: optWidth, height: optHeight },
+    originalTiles: originalTiles,
+    optimizedTiles: optimizedTiles,
+    tileSavings: originalTiles - optimizedTiles
+  }
+}
