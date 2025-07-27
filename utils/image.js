@@ -1,6 +1,49 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
 import { basename, resolve, dirname } from 'path'
 
+function detectImageType(buffer) {
+  // Check magic bytes for common image formats
+  const signatures = {
+    png: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A],
+    jpg: [0xFF, 0xD8, 0xFF],
+    gif: [0x47, 0x49, 0x46],
+    webp: [0x52, 0x49, 0x46, 0x46], // RIFF header, need to check WEBP later
+    bmp: [0x42, 0x4D]
+  }
+  
+  if (buffer.length < 12) {
+    return null
+  }
+  
+  // Check PNG
+  if (signatures.png.every((byte, i) => buffer[i] === byte)) {
+    return 'image/png'
+  }
+  
+  // Check JPEG
+  if (signatures.jpg.every((byte, i) => buffer[i] === byte)) {
+    return 'image/jpeg'
+  }
+  
+  // Check GIF
+  if (signatures.gif.every((byte, i) => buffer[i] === byte)) {
+    return 'image/gif'
+  }
+  
+  // Check WebP (RIFF....WEBP)
+  if (signatures.webp.every((byte, i) => buffer[i] === byte) && 
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return 'image/webp'
+  }
+  
+  // Check BMP
+  if (signatures.bmp.every((byte, i) => buffer[i] === byte)) {
+    return 'image/bmp'
+  }
+  
+  return null
+}
+
 export async function fetchImageFromUrl(url) {
   try {
     const response = await fetch(url)
@@ -9,15 +52,23 @@ export async function fetchImageFromUrl(url) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
     }
     
-    const contentType = response.headers.get('content-type')
-    if (!contentType || !contentType.startsWith('image/')) {
-      throw new Error('URL does not point to an image')
-    }
-    
     const buffer = Buffer.from(await response.arrayBuffer())
     
     if (buffer.length > 50 * 1024 * 1024) {
       throw new Error('Image size exceeds 50MB limit')
+    }
+    
+    // Check content-type header first
+    const contentType = response.headers.get('content-type')
+    const isImageByHeader = contentType && contentType.startsWith('image/')
+    
+    // If no valid content-type, check the actual file content
+    if (!isImageByHeader) {
+      const detectedType = detectImageType(buffer)
+      if (!detectedType) {
+        throw new Error('URL does not point to a valid image file (checked both headers and file content)')
+      }
+      console.log(`⚠️  Warning: Server returned incorrect content-type. Detected ${detectedType} from file content.`)
     }
     
     return buffer
