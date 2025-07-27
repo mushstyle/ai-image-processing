@@ -1,5 +1,6 @@
 import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'fs'
 import { basename, resolve, dirname } from 'path'
+import sharp from 'sharp'
 
 function detectImageType(buffer) {
   // Check magic bytes for common image formats
@@ -100,11 +101,9 @@ export function generateOutputFilename(customName = null, outputDir = null) {
     filename = `edited_${timestamp}.png`
   }
   
-  if (outputDir) {
-    return resolve(outputDir, filename)
-  }
-  
-  return filename
+  // Default to outputs/ directory if no outputDir specified
+  const directory = outputDir || 'outputs'
+  return resolve(directory, filename)
 }
 
 export function saveBase64Image(base64Data, outputPath) {
@@ -168,4 +167,18 @@ export function readLocalImage(filePath) {
   }
   
   return buffer
+}
+
+export async function getImageDimensions(buffer) {
+  try {
+    const metadata = await sharp(buffer).metadata()
+    return {
+      width: metadata.width,
+      height: metadata.height,
+      format: metadata.format,
+      size: buffer.length
+    }
+  } catch (error) {
+    throw new Error(`Failed to get image dimensions: ${error.message}`)
+  }
 }

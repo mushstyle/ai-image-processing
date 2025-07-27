@@ -37,8 +37,8 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 |--------|-------------|
 | `--url=<path>` | Image URL or local file path **(required)** |
 | `--prompt=<text>` | Edit instructions **(required)** |
-| `--output=<name>` | Custom filename (default: `edited_[timestamp].png`) |
-| `--output-dir=<dir>` | Save directory (default: current directory) |
+| `--output=<name>` | Custom filename (default: `outputs/edited_[timestamp].png`) |
+| `--output-dir=<dir>` | Save directory (default: `outputs/`) |
 | `--help` | Show help |
 
 ### Examples
@@ -46,6 +46,7 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 **Basic editing:**
 ```bash
 npm run edit -- --url="photo.jpg" --prompt="make it black and white"
+# Saves to: outputs/edited_[timestamp].png
 ```
 
 **From URL:**

@@ -6,8 +6,10 @@ import {
   generateOutputFilename, 
   saveBase64Image,
   isLocalFile,
-  readLocalImage
+  readLocalImage,
+  getImageDimensions
 } from './utils/image.js'
+import { calculateImageTokens, calculateCost, formatCost } from './utils/token-calculator.js'
 
 async function editImage(imagePath, prompt, options = {}) {
   const { outputFile, outputDir } = options
@@ -25,20 +27,34 @@ async function editImage(imagePath, prompt, options = {}) {
       console.log('✅ Image downloaded successfully')
     }
     
+    // Calculate tokens and cost estimate before API call
+    console.log('📊 Calculating token usage...')
+    const tokenInfo = await calculateImageTokens(imageBuffer, 'high')
+    const estimatedCost = calculateCost(tokenInfo.tokens)
+    
+    console.log(`📐 Image dimensions: ${tokenInfo.dimensions.width}x${tokenInfo.dimensions.height}`)
+    if (tokenInfo.tiles) {
+      console.log(`🔲 Tiles: ${tokenInfo.tiles.count} (scaled to ${tokenInfo.tiles.scaledDimensions.width}x${tokenInfo.tiles.scaledDimensions.height})`)
+    }
+    console.log(`🪙 Estimated tokens: ${tokenInfo.tokens.toLocaleString()}`)
+    console.log(`💰 Estimated cost: ${formatCost(estimatedCost)}`)
+    
     console.log('🔄 Converting image for OpenAI API...')
     const imageFile = await toFile(imageBuffer, 'source-image.png', { type: 'image/png' })
     
     console.log('🎨 Sending edit request to OpenAI...')
     const client = getOpenAIClient()
     
+    const startTime = Date.now()
     const response = await client.images.edit({
       model: 'gpt-image-1',
       image: imageFile,
       prompt: prompt,
       n: 1
     })
+    const duration = (Date.now() - startTime) / 1000
     
-    console.log('✅ Image edited successfully')
+    console.log(`✅ Image edited successfully (${duration.toFixed(1)}s)`)
     
     if (response.data[0].revised_prompt) {
       console.log(`📝 Revised prompt: ${response.data[0].revised_prompt}`)
@@ -50,6 +66,12 @@ async function editImage(imagePath, prompt, options = {}) {
     if (response.data[0].b64_json) {
       saveBase64Image(response.data[0].b64_json, outputPath)
       console.log(`💾 Saved edited image to: ${outputPath}`)
+      
+      // Show final cost summary
+      console.log('\n📊 Final Summary:')
+      console.log(`  • Tokens used: ${tokenInfo.tokens.toLocaleString()}`)
+      console.log(`  • Cost: ${formatCost(estimatedCost)}`)
+      console.log(`  • Processing time: ${duration.toFixed(1)}s`)
     } else {
       throw new Error('No base64 data in response from OpenAI API')
     }
