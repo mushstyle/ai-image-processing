@@ -41,6 +41,7 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 | `--output-dir=<dir>` | Save directory (default: `outputs/`) |
 | `--optimize-cost` | Resize image to tile boundaries to reduce costs |
 | `--quality=<level>` | Image quality: `auto`, `high`, `medium`, or `low` (default: `auto`) |
+| `--detail=<level>` | Token detail level: `high` or `low` (default: `high`) |
 | `--help` | Show help |
 
 ### Examples
@@ -73,6 +74,12 @@ npm run edit -- --url="photo.jpg" --prompt="add details" --quality=high
 # Uses high quality setting for better results (may cost more)
 ```
 
+**Low detail mode (cheaper):**
+```bash
+npm run edit -- --url="photo.jpg" --prompt="basic color adjustment" --detail=low
+# Uses low detail tokenization (85 tokens per tile instead of 255)
+```
+
 ## Limitations
 
 - Max file size: 50MB
@@ -87,6 +94,7 @@ npm run edit -- --url="photo.jpg" --prompt="add details" --quality=high
 - The `--optimize-cost` flag resizes images to 512px tile boundaries to minimize token usage
 - Token costs are calculated and displayed before API calls
 - Quality levels: `auto` (default), `high` (best quality), `medium`, `low` (fastest/cheapest)
+- Detail levels affect token cost: `high` = 255 tokens/tile, `low` = 85 tokens/tile (66% cheaper)
 
 ## Cost Information
 

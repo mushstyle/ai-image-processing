@@ -9,30 +9,49 @@
 
 ## Pricing Formula
 
-The cost for image editing with gpt-image-1 is calculated as:
+The total cost for image editing with gpt-image-1 includes both input and output tokens:
 
 ```
-Cost = (Number of Tokens / 1,000,000) × $5.00
+Total Cost = (Prompt Tokens + Completion Tokens) / 1,000,000 × $5.00
 ```
 
-Where:
-- **Token Price**: $5.00 per 1 million tokens
-- **Tokens per Image**: Based on **input** image dimensions (see below)
-- **Output**: Always 1024×1024 regardless of input
+### Token Breakdown
 
-### Example Calculations
-- 765 tokens = 765 ÷ 1,000,000 × $5.00 = **$0.0038**
-- 1,105 tokens = 1,105 ÷ 1,000,000 × $5.00 = **$0.0055**
-- 1,615 tokens = 1,615 ÷ 1,000,000 × $5.00 = **$0.0081**
+**Prompt Tokens (Input):**
+- **Text tokens**: Your prompt text (typically 10-100 tokens)
+- **Image tokens**: Calculated based on image size and detail level
+  - `detail:"high"` (default): (85 + 170) × number of tiles = 255 × tiles
+  - `detail:"low"`: 85 × number of tiles
+
+**Completion Tokens (Output):**
+- Tokens used by the model to process and generate the response
+- Typically 50-200 tokens for image editing
+- Shown in `response.usage.completion_tokens`
+
+### Example Cost Calculation
+For a 742×628 image (2×2 = 4 tiles) with high detail:
+- Text prompt: ~20 tokens
+- Image: 255 × 4 = 1,020 tokens  
+- Completion: ~100 tokens
+- **Total**: 1,140 tokens = $0.0057
 
 ## How OpenAI Calculates Image Tokens
 
-OpenAI's GPT-Vision models (including gpt-image-1) calculate tokens based on image dimensions:
+OpenAI's GPT-Vision models (including gpt-image-1) calculate image tokens based on detail level:
 
+### High Detail Mode (default)
 1. **Image Scaling**: First, images are scaled to fit within 2048×2048 pixels
 2. **Further Scaling**: If the shortest side is still > 768px, the image is scaled again
 3. **Tile Counting**: The final image is divided into 512×512 pixel tiles
-4. **Token Formula**: `85 + (170 × number_of_tiles)`
+4. **Token Formula**: `(85 + 170) × tiles = 255 × tiles`
+
+### Low Detail Mode
+1. **Same scaling and tiling process** as high detail
+2. **Token Formula**: `85 × tiles`
+3. Faster processing but less accurate understanding
+4. Good for simple edits where fine details aren't critical
+
+**Note**: Currently our script always uses high detail mode. Low detail mode could be added as a future optimization.
 
 ## Cost Optimization Strategy
 
@@ -43,19 +62,29 @@ Images are billed based on the number of 512×512 tiles they occupy. A 1023×102
 
 Since gpt-image-1 always outputs 1024×1024 images, you can aggressively optimize input sizes without affecting output quality. By resizing images to multiples of 512 pixels before sending to OpenAI, you can significantly reduce costs:
 
-| Original Size | Tiles | Tokens | Cost | Optimized Size | Tiles | Tokens | Cost | Savings |
-|--------------|-------|--------|------|----------------|-------|--------|------|---------|
-| 1000×1000 | 4 | 765 | $0.0038 | 1024×1024 | 4 | 765 | $0.0038 | 0% |
-| 1025×1025 | 9 | 1,615 | $0.0081 | 1024×1024 | 4 | 765 | $0.0038 | 53% |
-| 1500×1000 | 6 | 1,105 | $0.0055 | 1536×1024 | 6 | 1,105 | $0.0055 | 0% |
-| 1537×1000 | 8 | 1,445 | $0.0072 | 1536×1024 | 6 | 1,105 | $0.0055 | 24% |
+| Original Size | Tiles | Image Tokens (High) | Total Cost* | Optimized Size | Tiles | Image Tokens (High) | Total Cost* | Savings |
+|--------------|-------|---------------------|-------------|----------------|-------|---------------------|-------------|---------|
+| 1000×1000 | 4 | 1,020 | $0.0061 | 1024×1024 | 4 | 1,020 | $0.0061 | 0% |
+| 1025×1025 | 9 | 2,295 | $0.0127 | 1024×1024 | 4 | 1,020 | $0.0061 | 52% |
+| 1500×1000 | 6 | 1,530 | $0.0091 | 1536×1024 | 6 | 1,530 | $0.0091 | 0% |
+| 1537×1000 | 8 | 2,040 | $0.0117 | 1536×1024 | 6 | 1,530 | $0.0091 | 22% |
+
+*Total cost includes ~100 prompt text tokens + ~100 completion tokens
 
 ## Real-World Example
 
-A 742×628 image:
-- **Without optimization**: 2×2 = 4 tiles = 765 tokens = $0.0038
-- **With optimization** (resized to ~512×433): 1×1 = 1 tile = 255 tokens = $0.0013
-- **Savings**: 67% cost reduction, same 1024×1024 output!
+A 742×628 image with a 50-word prompt:
+- **Without optimization**: 
+  - Image: 2×2 = 4 tiles = 1,020 tokens (high detail)
+  - Text prompt: ~75 tokens
+  - Completion: ~100 tokens
+  - Total: 1,195 tokens = $0.0060
+- **With optimization** (resized to ~512×433): 
+  - Image: 1×1 = 1 tile = 255 tokens (high detail)
+  - Text prompt: ~75 tokens
+  - Completion: ~100 tokens
+  - Total: 430 tokens = $0.0022
+- **Savings**: 63% cost reduction, same 1024×1024 output!
 
 ## Implementation Recommendations
 

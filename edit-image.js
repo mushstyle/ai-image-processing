@@ -13,7 +13,7 @@ import {
 import { calculateImageTokens, calculateCost, formatCost } from './utils/token-calculator.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir, optimizeCost, quality } = options
+  const { outputFile, outputDir, optimizeCost, quality, detail } = options
   
   try {
     let imageBuffer
@@ -44,14 +44,14 @@ async function editImage(imagePath, prompt, options = {}) {
     
     // Calculate tokens and cost estimate before API call
     console.log('📊 Calculating token usage...')
-    const tokenInfo = await calculateImageTokens(imageBuffer, 'high')
+    const tokenInfo = await calculateImageTokens(imageBuffer, detail || 'high')
     const estimatedCost = calculateCost(tokenInfo.tokens)
     
     console.log(`📐 Image dimensions: ${tokenInfo.dimensions.width}x${tokenInfo.dimensions.height}`)
     if (tokenInfo.tiles) {
       console.log(`🔲 Tiles: ${tokenInfo.tiles.count} (scaled to ${tokenInfo.tiles.scaledDimensions.width}x${tokenInfo.tiles.scaledDimensions.height})`)
     }
-    console.log(`🪙 Estimated tokens: ${tokenInfo.tokens.toLocaleString()}`)
+    console.log(`🪙 Estimated tokens: ${tokenInfo.tokens.toLocaleString()} (${detail || 'high'} detail)`)
     console.log(`💰 Estimated cost: ${formatCost(estimatedCost)}`)
     if (quality && quality !== 'auto') {
       console.log(`🎨 Quality setting: ${quality}`)
@@ -64,14 +64,21 @@ async function editImage(imagePath, prompt, options = {}) {
     const client = getOpenAIClient()
     
     const startTime = Date.now()
-    const response = await client.images.edit({
+    const editParams = {
       model: 'gpt-image-1',
       image: imageFile,
       prompt: prompt,
       n: 1,
       size: '1024x1024',
       quality: quality || 'auto'
-    })
+    }
+    
+    // Add detail parameter if specified
+    if (detail) {
+      editParams.detail = detail
+    }
+    
+    const response = await client.images.edit(editParams)
     const duration = (Date.now() - startTime) / 1000
     
     console.log(`✅ Image edited successfully (${duration.toFixed(1)}s)`)
@@ -123,6 +130,7 @@ function parseCustomArgs(args) {
     'output-dir': null,
     'optimize-cost': false,
     quality: null,
+    detail: null,
     help: false
   }
   
@@ -169,6 +177,7 @@ Options:
   --output-dir=<dir>  Directory to save the output file (optional)
   --optimize-cost     Resize image to reduce API costs (optional)
   --quality=<level>   Image quality: auto, high, medium, or low (default: auto)
+  --detail=<level>    Detail level for tokenization: high or low (default: high)
   -h, --help          Show this help message
 
 Examples:
@@ -195,6 +204,11 @@ Examples:
     process.exit(1)
   }
   
+  if (values.detail && !['high', 'low'].includes(values.detail)) {
+    console.error('❌ Error: Invalid detail level. Must be: high or low')
+    process.exit(1)
+  }
+  
   if (!isLocalFile(values.url)) {
     try {
       new URL(values.url)
@@ -208,7 +222,8 @@ Examples:
     outputFile: values.output,
     outputDir: values['output-dir'],
     optimizeCost: values['optimize-cost'],
-    quality: values.quality
+    quality: values.quality,
+    detail: values.detail
   })
 }
 

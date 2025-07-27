@@ -11,14 +11,7 @@ export async function calculateImageTokens(imageBuffer, detail = 'high') {
   const metadata = await sharp(imageBuffer).metadata()
   const { width, height } = metadata
   
-  if (detail === 'low') {
-    return {
-      tokens: 85,
-      dimensions: { width, height }
-    }
-  }
-  
-  // High detail calculation
+  // For both low and high detail, we need to calculate tiles first
   let scaledWidth = width
   let scaledHeight = height
   
@@ -42,8 +35,20 @@ export async function calculateImageTokens(imageBuffer, detail = 'high') {
   const tilesY = Math.ceil(scaledHeight / 512)
   const totalTiles = tilesX * tilesY
   
-  // Calculate tokens: base 85 + 170 per tile
-  const tokens = 85 + (170 * totalTiles)
+  if (detail === 'low') {
+    // Low detail: 85 tokens per tile
+    return {
+      tokens: 85 * totalTiles,
+      dimensions: { width, height },
+      tiles: {
+        count: totalTiles,
+        scaledDimensions: { width: scaledWidth, height: scaledHeight }
+      }
+    }
+  }
+  
+  // High detail: (85 + 170) tokens per tile = 255 per tile
+  const tokens = (85 + 170) * totalTiles
   
   return {
     tokens,
