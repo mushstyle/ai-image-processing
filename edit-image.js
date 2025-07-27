@@ -4,7 +4,9 @@ import {
   fetchImageFromUrl, 
   toFile, 
   generateOutputFilename, 
-  saveBase64Image 
+  saveBase64Image,
+  isLocalFile,
+  readLocalImage
 } from './utils/image.js'
 
 async function editImage(imageUrl, prompt, outputFile = null) {

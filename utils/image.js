@@ -1,5 +1,5 @@
-import { writeFileSync } from 'fs'
-import { basename } from 'path'
+import { writeFileSync, readFileSync, existsSync } from 'fs'
+import { basename, resolve } from 'path'
 
 export async function fetchImageFromUrl(url) {
   try {
@@ -65,4 +65,36 @@ export async function toFile(buffer, filename, options = {}) {
   }
   
   return file
+}
+
+export function isLocalFile(path) {
+  try {
+    new URL(path)
+    return false
+  } catch {
+    return true
+  }
+}
+
+export function readLocalImage(filePath) {
+  const resolvedPath = resolve(filePath)
+  
+  if (!existsSync(resolvedPath)) {
+    throw new Error(`File not found: ${filePath}`)
+  }
+  
+  const buffer = readFileSync(resolvedPath)
+  
+  if (buffer.length > 50 * 1024 * 1024) {
+    throw new Error('Image size exceeds 50MB limit')
+  }
+  
+  const ext = filePath.toLowerCase().split('.').pop()
+  const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp']
+  
+  if (!validExtensions.includes(ext)) {
+    throw new Error(`Unsupported file type: .${ext}`)
+  }
+  
+  return buffer
 }
