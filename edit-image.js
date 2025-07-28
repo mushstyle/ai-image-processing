@@ -10,7 +10,7 @@ import {
 } from './utils/image.js'
 
 async function editImage(imagePath, prompt, options = {}) {
-  const { outputFile, outputDir, quality } = options
+  const { outputFile, outputDir, quality, size } = options
   
   try {
     let imageBuffer
@@ -41,7 +41,7 @@ async function editImage(imagePath, prompt, options = {}) {
       image: imageFile,
       prompt: prompt,
       n: 1,
-      size: '1024x1024',
+      size: size || '1024x1024',
       quality: quality || 'auto'
     })
     const duration = (Date.now() - startTime) / 1000
@@ -83,6 +83,7 @@ function parseCustomArgs(args) {
     output: null,
     'output-dir': null,
     quality: null,
+    size: null,
     help: false
   }
   
@@ -128,6 +129,7 @@ Options:
   --output=<filename> Custom output filename (optional)
   --output-dir=<dir>  Directory to save the output file (optional)
   --quality=<level>   Image quality: auto, high, medium, or low (default: auto)
+  --size=<dimensions> Output size: 1024x1024, 1536x1024, or 1024x1536 (default: 1024x1024)
   -h, --help          Show this help message
 
 Examples:
@@ -154,6 +156,11 @@ Examples:
     process.exit(1)
   }
   
+  if (values.size && !['1024x1024', '1536x1024', '1024x1536'].includes(values.size)) {
+    console.error('❌ Error: Invalid size. Must be: 1024x1024, 1536x1024, or 1024x1536')
+    process.exit(1)
+  }
+  
   
   if (!isLocalFile(values.url)) {
     try {
@@ -167,7 +174,8 @@ Examples:
   await editImage(values.url, values.prompt, {
     outputFile: values.output,
     outputDir: values['output-dir'],
-    quality: values.quality
+    quality: values.quality,
+    size: values.size
   })
 }
 

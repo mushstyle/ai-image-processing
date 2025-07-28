@@ -40,6 +40,7 @@ npm run edit -- --url=<image> --prompt=<instructions> [options]
 | `--output=<name>` | Custom filename (default: `outputs/edited_[timestamp].png`) |
 | `--output-dir=<dir>` | Save directory (default: `outputs/`) |
 | `--quality=<level>` | Image quality: `auto`, `high`, `medium`, or `low` (default: `auto`) |
+| `--size=<dimensions>` | Output size: `1024x1024`, `1536x1024`, or `1024x1536` (default: `1024x1024`) |
 | `--help` | Show help |
 
 ### Examples
@@ -66,12 +67,35 @@ npm run edit -- --url="photo.jpg" --prompt="add details" --quality=high
 # Uses high quality setting for better results (may cost more)
 ```
 
+**Landscape output:**
+```bash
+npm run edit -- --url="photo.jpg" --prompt="make it cinematic" --size=1536x1024
+# Creates a landscape format image (costs more than square)
+```
+
 
 ## Limitations
 
 - Max file size: 50MB
 - Max prompt length: 32,000 characters
 - Supported formats: JPG, PNG, GIF, WebP, BMP
+
+## Pricing
+
+The cost of image editing with gpt-image-1 depends on two main factors:
+
+1. **Quality** - Lower quality settings are cheaper
+   - `auto` (default) - Let OpenAI optimize cost/quality
+   - `low` - Cheapest option
+   - `medium` - Balanced cost/quality
+   - `high` - Most expensive, best quality
+
+2. **Output Size** - Smaller outputs cost less
+   - `1024x1024` (default) - Cheapest option
+   - `1536x1024` or `1024x1536` - More expensive
+   - Other sizes may have different costs
+
+**💡 Tip**: The script defaults to `auto` quality and `1024x1024` size for optimal cost-effectiveness.
 
 ## Notes
 
