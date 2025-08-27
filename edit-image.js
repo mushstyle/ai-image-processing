@@ -1,5 +1,5 @@
 import { parseArgs } from 'util'
-import { getOpenAIClient } from './utils/openai.js'
+import { getOpenAIClient } from './src/utils/openai.js'
 import { 
   fetchImageFromUrl, 
   toFile, 
@@ -7,7 +7,7 @@ import {
   saveBase64Image,
   isLocalFile,
   readLocalImage
-} from './utils/image.js'
+} from './src/utils/image.js'
 
 async function editImage(imagePath, prompt, options = {}) {
   const { outputFile, outputDir, quality, size } = options

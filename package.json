@@ -9,10 +9,17 @@
   "scripts": {
     "dev": "node --env-file=.env --watch index.js",
     "start": "node --env-file=.env index.js",
-    "edit": "node --env-file=.env edit-image.js"
+    "edit": "node --env-file=.env edit-image.js",
+    "gemini-test": "node --env-file=.env --import tsx scripts/test-gemini.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.15.0",
     "express": "^4.21.2",
     "openai": "^4.74.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
   }
 }
