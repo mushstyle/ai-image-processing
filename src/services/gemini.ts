@@ -17,6 +17,32 @@ const mimeFor = (p: string): string => {
   return "application/octet-stream";
 };
 
+const getAvailableFilename = (basePath: string): string => {
+  // If the file doesn't exist, use it as is
+  if (!fs.existsSync(basePath)) {
+    return basePath;
+  }
+  
+  // Extract directory, name without extension, and extension
+  const dir = path.dirname(basePath);
+  const ext = path.extname(basePath);
+  const nameWithoutExt = path.basename(basePath, ext);
+  
+  // Check if the name already ends with a number
+  const match = nameWithoutExt.match(/^(.+?)_?(\d+)$/);
+  let baseName = match ? match[1] : nameWithoutExt;
+  let counter = match ? parseInt(match[2], 10) : 1;
+  
+  // Find the next available number
+  let newPath = basePath;
+  while (fs.existsSync(newPath)) {
+    counter++;
+    newPath = path.join(dir, `${baseName}_${counter}${ext}`);
+  }
+  
+  return newPath;
+};
+
 export async function editOrCompose({
   inputPaths,
   prompt,
@@ -49,10 +75,12 @@ export async function editOrCompose({
   for (const part of res.candidates?.[0]?.content?.parts ?? []) {
     if (part.inlineData?.data) {
       const buf = Buffer.from(part.inlineData.data, "base64");
-      const outputPath = `${outPrefix}${i++}.png`;
+      const proposedPath = `${outPrefix}${i}.png`;
+      const outputPath = getAvailableFilename(proposedPath);
       fs.writeFileSync(outputPath, buf);
       outputPaths.push(outputPath);
       console.log(`💾 Saved image to: ${outputPath}`);
+      i++;
     } else if (part.text) {
       console.log("Model note:", part.text);
     }
