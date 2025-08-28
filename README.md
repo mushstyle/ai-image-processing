@@ -164,6 +164,41 @@ npm run gemini-test -- --image="background.jpg" --image="subject.png" --image="s
 - Model: gemini-2.5-flash-image-preview
 - Multiple inputs and outputs supported
 
+## Web Application
+
+A Next.js web interface is available for Gemini image processing.
+
+### Starting the Web App
+
+```bash
+cd webapp
+npm install
+npm run dev
+```
+
+Visit http://localhost:3000 to access the web interface.
+
+### Web Features
+
+- **Unified Input System**: Each input slot can accept either a file upload or image URL
+- **Multiple Images**: Add as many input images as needed
+- **Live Preview**: Thumbnail previews of selected images
+- **Instant Results**: Generated images display directly in the browser
+- **Download Options**: Download individual images or all at once
+- **No File Management**: Images are processed and displayed without server-side saving
+
+### Web Usage
+
+1. Enter your prompt describing what you want to do with the images
+2. Add input images by:
+   - Pasting image URLs directly
+   - Clicking "Browse Files" to select local files
+   - Selecting multiple files at once (they'll auto-fill into slots)
+3. Click "Process Images" to send to Gemini API
+4. View and download the generated images
+
+The web interface is ideal for quick experiments and doesn't require command-line knowledge.
+
 ## Pricing
 
 ### OpenAI (gpt-image-1)
