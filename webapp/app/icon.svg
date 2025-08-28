@@ -1,0 +1,41 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="url(#gradient)"/>
+  
+  <!-- Image icon with sparkles -->
+  <g fill="white">
+    <!-- Main image frame -->
+    <rect x="8" y="10" width="16" height="12" rx="1" stroke="white" stroke-width="1.5" fill="none"/>
+    
+    <!-- Mountain/landscape inside frame -->
+    <path d="M8 18 L13 13 L16 16 L19 13 L24 18 L24 21 Q24 22 23 22 L9 22 Q8 22 8 21 Z" fill="white" opacity="0.9"/>
+    
+    <!-- Sun/circle in frame -->
+    <circle cx="19" cy="13" r="2" fill="white"/>
+    
+    <!-- Sparkles around frame -->
+    <g opacity="0.95">
+      <!-- Top right sparkle -->
+      <path d="M26 8 L27 7 L28 8 L27 9 Z" fill="white"/>
+      <path d="M27 7 L27 9 M26 8 L28 8" stroke="white" stroke-width="0.5"/>
+      
+      <!-- Bottom left sparkle -->
+      <path d="M4 24 L5 23 L6 24 L5 25 Z" fill="white"/>
+      <path d="M5 23 L5 25 M4 24 L6 24" stroke="white" stroke-width="0.5"/>
+      
+      <!-- Top left small sparkle -->
+      <circle cx="6" cy="7" r="0.8" fill="white"/>
+      
+      <!-- Bottom right small sparkle -->
+      <circle cx="26" cy="25" r="0.8" fill="white"/>
+    </g>
+  </g>
+  
+  <!-- Gradient definition -->
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+  </defs>
+</svg>

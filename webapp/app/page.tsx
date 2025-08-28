@@ -204,7 +204,7 @@ export default function Home() {
                         <img
                           src={input.preview}
                           alt="Preview"
-                          className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+                          className="h-16 max-w-24 object-contain rounded-lg border border-gray-300 bg-gray-50"
                           onError={(e) => {
                             // Hide image if it fails to load
                             (e.target as HTMLImageElement).style.display = 'none';
