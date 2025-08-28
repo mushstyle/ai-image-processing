@@ -4,5 +4,8 @@ export const ALLOWED_EMAIL_ADDRESSES = [
   // Add authorized email addresses here
   "tim@mush.style",
   "anna@mush.style",
+  "willbach@gmail.com",
+  "timgalebachukraine@gmail.com",
+  "d.venhreniuk@gmail.com"
   // Add more emails as needed
 ];
