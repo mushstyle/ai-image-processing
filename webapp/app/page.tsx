@@ -12,6 +12,7 @@ type ImageInput = {
   file?: File;
   url?: string;
   fileName?: string;
+  preview?: string;
 };
 
 export default function Home() {
@@ -67,10 +68,15 @@ export default function Home() {
   };
 
   const removeImageInput = (id: string) => {
+    // Revoke object URL if it's a file to prevent memory leaks
+    const input = imageInputs.find(i => i.id === id);
+    if (input?.type === 'file' && input.preview) {
+      URL.revokeObjectURL(input.preview);
+    }
     setImageInputs(imageInputs.filter(input => input.id !== id));
   };
 
-  const handleFileSelect = (id: string, e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (id: string, e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       // If multiple files selected, update current slot and add new slots for additional files
@@ -78,22 +84,28 @@ export default function Home() {
       const currentIndex = updatedInputs.findIndex(input => input.id === id);
       
       if (currentIndex !== -1) {
+        // Create preview for first file
+        const firstFilePreview = URL.createObjectURL(files[0]);
+        
         // Update the current slot with the first file
         updatedInputs[currentIndex] = {
           ...updatedInputs[currentIndex],
           type: 'file',
           file: files[0],
-          fileName: files[0].name
+          fileName: files[0].name,
+          preview: firstFilePreview
         };
         
         // Add new slots for additional files
         const newInputs: ImageInput[] = [];
         for (let i = 1; i < files.length; i++) {
+          const preview = URL.createObjectURL(files[i]);
           newInputs.push({
             id: crypto.randomUUID(),
             type: 'file',
             file: files[i],
-            fileName: files[i].name
+            fileName: files[i].name,
+            preview: preview
           });
         }
         
@@ -108,12 +120,18 @@ export default function Home() {
   const handleUrlInput = (id: string, url: string) => {
     setImageInputs(imageInputs.map(input => 
       input.id === id 
-        ? { ...input, type: url ? 'url' : 'empty', url }
+        ? { ...input, type: url ? 'url' : 'empty', url, preview: url || undefined }
         : input
     ));
   };
 
   const resetInput = (id: string) => {
+    // Revoke object URL if it's a file to prevent memory leaks
+    const input = imageInputs.find(i => i.id === id);
+    if (input?.type === 'file' && input.preview) {
+      URL.revokeObjectURL(input.preview);
+    }
+    
     setImageInputs(imageInputs.map(input => 
       input.id === id 
         ? { id: input.id, type: 'empty' }
@@ -180,6 +198,21 @@ export default function Home() {
               <div className="space-y-3">
                 {imageInputs.map((input, index) => (
                   <div key={input.id} className="flex gap-2">
+                    {/* Thumbnail Preview */}
+                    {input.preview && (
+                      <div className="flex-shrink-0">
+                        <img
+                          src={input.preview}
+                          alt="Preview"
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-300"
+                          onError={(e) => {
+                            // Hide image if it fails to load
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
+                    
                     <div className="flex-1">
                       {input.type === 'empty' || input.type === 'url' ? (
                         <div className="flex gap-2">
