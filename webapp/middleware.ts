@@ -4,8 +4,10 @@ import { clerkClient } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { ALLOWED_EMAIL_ADDRESSES } from "./app/users";
 
-// Create route matcher for public routes that don't require email verification
+// Create route matcher for public routes that don't require authentication
 const isPublicRoute = createRouteMatcher([
+  '/sign-in(.*)',
+  '/sign-up(.*)',
   '/unauthorized',
   '/api/webhooks/(.*)', // Allow webhooks to pass through
 ]);
@@ -16,7 +18,12 @@ export default clerkMiddleware(async (auth, req) => {
   const pathname = req.nextUrl.pathname;
 
   // Check if user is authenticated
-  const { userId } = await auth();
+  const { userId, redirectToSignIn } = await auth();
+
+  // If not authenticated and not a public route, redirect to sign in
+  if (!userId && !isPublicRoute(req)) {
+    return redirectToSignIn();
+  }
 
   // If user is authenticated, check if their email is allowed
   if (userId && !isPublicRoute(req)) {
