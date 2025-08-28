@@ -254,7 +254,7 @@ export default function Home() {
   const downloadImage = (image: OutputImage, index: number) => {
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${image.data}`;
-    link.download = `mush_output_${index + 1}.png`;
+    link.download = `nano_banana_output_${index + 1}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -325,7 +325,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
           <h3 className="text-4xl font-bold text-gray-900 mb-2">
-            Mush: Nano Banana Workshop
+            Nano Banana Workshop
           </h3>
         </div>
 

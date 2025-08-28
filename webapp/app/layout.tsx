@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Mush: Nano Banana",
-  description: "Process and transform images using Mush AI",
+  title: "Nano Banana",
+  description: "Process and transform images using AI",
 };
 
 export default function RootLayout({
@@ -36,7 +36,7 @@ export default function RootLayout({
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <div className="flex justify-between items-center p-4 border-b bg-gray-50">
-            <h1 className="text-xl font-bold">Mush: Nano Banana</h1>
+            <h1 className="text-xl font-bold">Nano Banana</h1>
             <div>
               <SignedOut>
                 <SignInButton />
