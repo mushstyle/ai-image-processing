@@ -1,18 +1,28 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, ChangeEvent, useRef } from 'react';
 
 interface OutputImage {
   data: string;
 }
 
+type ImageInput = {
+  id: string;
+  type: 'file' | 'url' | 'empty';
+  file?: File;
+  url?: string;
+  fileName?: string;
+};
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
-  const [files, setFiles] = useState<FileList | null>(null);
-  const [urls, setUrls] = useState<string[]>(['']);
+  const [imageInputs, setImageInputs] = useState<ImageInput[]>([
+    { id: crypto.randomUUID(), type: 'empty' }
+  ]);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<OutputImage[]>([]);
   const [error, setError] = useState('');
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -23,17 +33,12 @@ export default function Home() {
     const formData = new FormData();
     formData.append('prompt', prompt);
 
-    // Add files
-    if (files) {
-      for (let i = 0; i < files.length; i++) {
-        formData.append('files', files[i]);
-      }
-    }
-
-    // Add URLs
-    urls.forEach(url => {
-      if (url.trim()) {
-        formData.append('urls', url.trim());
+    // Add files and URLs from unified inputs
+    imageInputs.forEach(input => {
+      if (input.type === 'file' && input.file) {
+        formData.append('files', input.file);
+      } else if (input.type === 'url' && input.url) {
+        formData.append('urls', input.url);
       }
     });
 
@@ -57,18 +62,67 @@ export default function Home() {
     }
   };
 
-  const addUrlField = () => {
-    setUrls([...urls, '']);
+  const addImageInput = () => {
+    setImageInputs([...imageInputs, { id: crypto.randomUUID(), type: 'empty' }]);
   };
 
-  const updateUrl = (index: number, value: string) => {
-    const newUrls = [...urls];
-    newUrls[index] = value;
-    setUrls(newUrls);
+  const removeImageInput = (id: string) => {
+    setImageInputs(imageInputs.filter(input => input.id !== id));
   };
 
-  const removeUrl = (index: number) => {
-    setUrls(urls.filter((_, i) => i !== index));
+  const handleFileSelect = (id: string, e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      // If multiple files selected, update current slot and add new slots for additional files
+      const updatedInputs = [...imageInputs];
+      const currentIndex = updatedInputs.findIndex(input => input.id === id);
+      
+      if (currentIndex !== -1) {
+        // Update the current slot with the first file
+        updatedInputs[currentIndex] = {
+          ...updatedInputs[currentIndex],
+          type: 'file',
+          file: files[0],
+          fileName: files[0].name
+        };
+        
+        // Add new slots for additional files
+        const newInputs: ImageInput[] = [];
+        for (let i = 1; i < files.length; i++) {
+          newInputs.push({
+            id: crypto.randomUUID(),
+            type: 'file',
+            file: files[i],
+            fileName: files[i].name
+          });
+        }
+        
+        // Insert new inputs after the current one
+        updatedInputs.splice(currentIndex + 1, 0, ...newInputs);
+      }
+      
+      setImageInputs(updatedInputs);
+    }
+  };
+
+  const handleUrlInput = (id: string, url: string) => {
+    setImageInputs(imageInputs.map(input => 
+      input.id === id 
+        ? { ...input, type: url ? 'url' : 'empty', url }
+        : input
+    ));
+  };
+
+  const resetInput = (id: string) => {
+    setImageInputs(imageInputs.map(input => 
+      input.id === id 
+        ? { id: input.id, type: 'empty' }
+        : input
+    ));
+    // Reset the file input
+    if (fileInputRefs.current[id]) {
+      fileInputRefs.current[id]!.value = '';
+    }
   };
 
   const downloadImage = (image: OutputImage, index: number) => {
@@ -83,6 +137,10 @@ export default function Home() {
   const downloadAll = () => {
     results.forEach((image, index) => downloadImage(image, index));
   };
+
+  const hasValidInputs = imageInputs.some(input => 
+    (input.type === 'file' && input.file) || (input.type === 'url' && input.url)
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -114,59 +172,78 @@ export default function Home() {
               />
             </div>
 
-            {/* File Upload */}
-            <div>
-              <label htmlFor="files" className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Images
-              </label>
-              <input
-                id="files"
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(e) => setFiles(e.target.files)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-            </div>
-
-            {/* URL Inputs */}
+            {/* Unified Image Inputs */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Or Enter Image URLs
+                Input Images
               </label>
-              {urls.map((url, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) => updateUrl(index, e.target.value)}
-                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                  {urls.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeUrl(index)}
-                      className="px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
+              <div className="space-y-3">
+                {imageInputs.map((input, index) => (
+                  <div key={input.id} className="flex gap-2">
+                    <div className="flex-1">
+                      {input.type === 'empty' || input.type === 'url' ? (
+                        <div className="relative">
+                          <input
+                            type="url"
+                            value={input.url || ''}
+                            onChange={(e) => handleUrlInput(input.id, e.target.value)}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Paste image URL or click to browse files..."
+                          />
+                          <input
+                            ref={(el) => { fileInputRefs.current[input.id] = el; }}
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => handleFileSelect(input.id, e)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            title="Click to select files"
+                          />
+                        </div>
+                      ) : input.type === 'file' ? (
+                        <div className="flex items-center px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
+                          <span className="flex-1 text-sm text-gray-700">
+                            📁 {input.fileName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => resetInput(input.id)}
+                            className="ml-2 text-gray-500 hover:text-gray-700"
+                            title="Clear"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                    {imageInputs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeImageInput(input.id)}
+                        className="px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
               <button
                 type="button"
-                onClick={addUrlField}
-                className="mt-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                onClick={addImageInput}
+                className="mt-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
-                + Add another URL
+                + Add another image
               </button>
+              <p className="mt-2 text-xs text-gray-500">
+                Tip: You can select multiple files at once or drag & drop
+              </p>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={loading || (!files?.length && !urls.some(u => u.trim()))}
+              disabled={loading || !hasValidInputs}
               className="w-full py-3 px-6 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? (
