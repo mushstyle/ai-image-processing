@@ -233,6 +233,7 @@ export default function Home() {
   };
 
   const deletePrompt = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent form submission
     e.stopPropagation(); // Prevent dropdown item click
     
     if (!confirm('Delete this saved prompt?')) return;
@@ -386,6 +387,7 @@ export default function Home() {
                                 </p>
                               </div>
                               <button
+                                type="button"
                                 onClick={(e) => deletePrompt(savedPrompt.id, e)}
                                 className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
                               >
