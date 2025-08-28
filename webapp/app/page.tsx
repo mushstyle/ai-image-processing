@@ -34,7 +34,9 @@ export default function Home() {
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [pasteTargetId, setPasteTargetId] = useState<string | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const pasteAreaRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -192,6 +194,61 @@ export default function Home() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showPromptDropdown]);
+
+  // Handle paste events
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      // Check if we have a target ID or if the paste area is focused
+      if (!pasteTargetId) return;
+
+      const items = Array.from(e.clipboardData?.items || []);
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      
+      if (imageItem) {
+        e.preventDefault();
+        const blob = imageItem.getAsFile();
+        if (blob) {
+          setLoading(true);
+          try {
+            // Convert blob to File object with proper name
+            const fileName = `pasted-image-${Date.now()}.${blob.type.split('/')[1]}`;
+            const file = new File([blob], fileName, { type: blob.type });
+            
+            // Convert HEIC if needed and create preview
+            const { file: convertedFile, preview, wasConverted } = await convertToJpeg(file);
+            
+            // Update the target input
+            setImageInputs(prev => prev.map(input => 
+              input.id === pasteTargetId
+                ? {
+                    ...input,
+                    type: 'file',
+                    file: convertedFile,
+                    fileName: convertedFile.name,
+                    preview: preview,
+                    wasConverted: wasConverted
+                  }
+                : input
+            ));
+            
+            // Clear paste target
+            setPasteTargetId(null);
+            
+            // Show success toast
+            setToast({ message: 'Image pasted successfully', type: 'success' });
+          } catch (error) {
+            console.error('Error pasting image:', error);
+            setToast({ message: 'Failed to paste image', type: 'error' });
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [pasteTargetId]);
 
   const loadPrompts = async () => {
     try {
@@ -437,13 +494,44 @@ export default function Home() {
                     <div className="flex-1">
                       {input.type === 'empty' || input.type === 'url' ? (
                         <div className="flex gap-2">
-                          <input
-                            type="url"
-                            value={input.url || ''}
-                            onChange={(e) => handleUrlInput(input.id, e.target.value)}
-                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Paste image URL here..."
-                          />
+                          <div 
+                            className={`flex-1 relative ${pasteTargetId === input.id ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
+                            onClick={() => setPasteTargetId(input.id)}
+                            onFocus={() => setPasteTargetId(input.id)}
+                            tabIndex={0}
+                          >
+                            <input
+                              type="url"
+                              value={input.url || ''}
+                              onChange={(e) => handleUrlInput(input.id, e.target.value)}
+                              onFocus={() => setPasteTargetId(input.id)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              placeholder="Paste image URL or use Ctrl/Cmd+V to paste image..."
+                            />
+                            {pasteTargetId === input.id && (
+                              <div className="absolute -top-8 left-0 px-2 py-1 bg-blue-600 text-white text-xs rounded animate-pulse">
+                                Ready to paste! Press Ctrl/Cmd+V
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPasteTargetId(input.id);
+                              navigator.clipboard.readText().then(text => {
+                                if (text.startsWith('http')) {
+                                  handleUrlInput(input.id, text);
+                                }
+                              }).catch(() => {
+                                // Mobile fallback - show paste instruction
+                                setToast({ message: 'Tap and hold to paste, or press Ctrl/Cmd+V', type: 'success' });
+                              });
+                            }}
+                            className="px-3 py-3 bg-blue-100 hover:bg-blue-200 border border-blue-300 rounded-lg transition-colors text-sm font-medium"
+                            title="Paste from clipboard"
+                          >
+                            📋
+                          </button>
                           <div className="relative">
                             <button
                               type="button"
@@ -501,7 +589,7 @@ export default function Home() {
                 + Add another image
               </button>
               <p className="mt-2 text-xs text-gray-500">
-                Tip: You can select multiple files at once • HEIC/HEIF files are converted to JPEG automatically
+                Tips: Paste images with Ctrl/Cmd+V • Select multiple files at once • HEIC/HEIF files are converted automatically
               </p>
             </div>
 
