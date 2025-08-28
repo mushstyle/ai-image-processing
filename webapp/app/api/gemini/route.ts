@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const tempPath = join(tmpdir(), `gemini_upload_${Date.now()}_${file.name}`);
+      const tempPath = join(tmpdir(), `mush_upload_${Date.now()}_${file.name}`);
       writeFileSync(tempPath, buffer);
       inputPaths.push(tempPath);
       tempFiles.push(tempPath);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     for (const url of urls) {
       if (url && url.trim()) {
         const buffer = await downloadImage(url);
-        const tempPath = join(tmpdir(), `gemini_url_${Date.now()}.png`);
+        const tempPath = join(tmpdir(), `mush_url_${Date.now()}.png`);
         writeFileSync(tempPath, buffer);
         inputPaths.push(tempPath);
         tempFiles.push(tempPath);

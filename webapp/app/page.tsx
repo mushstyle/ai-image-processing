@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, ChangeEvent, useRef } from 'react';
+import { useState, FormEvent, ChangeEvent, useRef, useEffect } from 'react';
 import { convertToJpeg } from '../lib/convertToJpeg';
 
 interface OutputImage {
@@ -17,6 +17,12 @@ type ImageInput = {
   wasConverted?: boolean;
 };
 
+interface SavedPrompt {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [imageInputs, setImageInputs] = useState<ImageInput[]>([
@@ -25,6 +31,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<OutputImage[]>([]);
   const [error, setError] = useState('');
+  const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
+  const [showPromptDropdown, setShowPromptDropdown] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   const handleSubmit = async (e: FormEvent) => {
@@ -156,10 +165,95 @@ export default function Home() {
     }
   };
 
+  // Load saved prompts on mount
+  useEffect(() => {
+    loadPrompts();
+  }, []);
+
+  // Auto-hide toast after 3 seconds
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.prompt-dropdown-container')) {
+        setShowPromptDropdown(false);
+      }
+    };
+
+    if (showPromptDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showPromptDropdown]);
+
+  const loadPrompts = async () => {
+    try {
+      const response = await fetch('/api/prompts');
+      const data = await response.json();
+      if (response.ok && data.prompts) {
+        setSavedPrompts(data.prompts);
+      }
+    } catch (error) {
+      console.error('Failed to load prompts:', error);
+    }
+  };
+
+  const savePrompt = async () => {
+    if (!prompt.trim()) return;
+    
+    try {
+      const response = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: prompt })
+      });
+      
+      if (response.ok) {
+        await loadPrompts(); // Reload the list
+        setToast({ message: 'Prompt saved!', type: 'success' });
+      } else {
+        setToast({ message: 'Failed to save prompt', type: 'error' });
+      }
+    } catch (error) {
+      console.error('Failed to save prompt:', error);
+      setToast({ message: 'Failed to save prompt', type: 'error' });
+    }
+  };
+
+  const loadPrompt = (savedPrompt: SavedPrompt) => {
+    setPrompt(savedPrompt.text);
+    setShowPromptDropdown(false);
+  };
+
+  const deletePrompt = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent dropdown item click
+    
+    if (!confirm('Delete this saved prompt?')) return;
+    
+    try {
+      const response = await fetch(`/api/prompts?id=${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        await loadPrompts();
+      }
+    } catch (error) {
+      console.error('Failed to delete prompt:', error);
+    }
+  };
+
   const downloadImage = (image: OutputImage, index: number) => {
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${image.data}`;
-    link.download = `gemini_output_${index + 1}.png`;
+    link.download = `mush_output_${index + 1}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -169,19 +263,72 @@ export default function Home() {
     results.forEach((image, index) => downloadImage(image, index));
   };
 
+  const handleUseGeneratedImage = async (image: OutputImage, index: number) => {
+    try {
+      // Convert base64 to blob
+      const response = await fetch(`data:image/png;base64,${image.data}`);
+      const blob = await response.blob();
+      
+      // Create a File object
+      const file = new File([blob], `generated_${index + 1}.png`, { type: 'image/png' });
+      
+      // Create preview URL
+      const preview = URL.createObjectURL(blob);
+      
+      // Add to image inputs
+      const newInput: ImageInput = {
+        id: crypto.randomUUID(),
+        type: 'file',
+        file: file,
+        fileName: `generated_${index + 1}.png`,
+        preview: preview,
+        wasConverted: false
+      };
+      
+      // Find first empty slot or add at the end
+      const emptyIndex = imageInputs.findIndex(input => input.type === 'empty');
+      
+      if (emptyIndex !== -1) {
+        // Replace empty slot
+        const updatedInputs = [...imageInputs];
+        updatedInputs[emptyIndex] = newInput;
+        setImageInputs(updatedInputs);
+      } else {
+        // Add new slot
+        setImageInputs([...imageInputs, newInput]);
+      }
+      
+      // Scroll to input section
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (error) {
+      console.error('Failed to use generated image:', error);
+    }
+  };
+
   const hasValidInputs = imageInputs.some(input => 
     (input.type === 'file' && input.file) || (input.type === 'url' && input.url)
   );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+      {/* Toast Notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 animate-fade-in">
+          <div className={`px-4 py-2 rounded-lg shadow-lg text-white ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          }`}>
+            {toast.message}
+          </div>
+        </div>
+      )}
+      
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Gemini Image Processor
+            Mush Image Processor
           </h1>
           <p className="text-lg text-gray-600">
-            Process images with Google&apos;s Gemini AI
+            Process images with Mush AI
           </p>
         </div>
 
@@ -189,9 +336,56 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Prompt Input */}
             <div>
-              <label htmlFor="prompt" className="block text-sm font-medium text-gray-700 mb-2">
-                Prompt
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label htmlFor="prompt" className="block text-sm font-medium text-gray-700">
+                  Prompt
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={savePrompt}
+                    disabled={!prompt.trim()}
+                    className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                  >
+                    Save Prompt
+                  </button>
+                  <div className="relative prompt-dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => setShowPromptDropdown(!showPromptDropdown)}
+                      className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Load Saved ▼
+                    </button>
+                    {showPromptDropdown && savedPrompts.length > 0 && (
+                      <div className="absolute right-0 mt-1 w-96 max-h-64 overflow-y-auto bg-gray-100 border border-gray-300 rounded-lg shadow-xl z-10">
+                        {savedPrompts.map(savedPrompt => (
+                          <div
+                            key={savedPrompt.id}
+                            onClick={() => loadPrompt(savedPrompt)}
+                            className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-200 group transition-colors"
+                          >
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1 mr-2">
+                                <p className="text-sm text-gray-800 line-clamp-2 font-medium">{savedPrompt.text}</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  {new Date(savedPrompt.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                              <button
+                                onClick={(e) => deletePrompt(savedPrompt.id, e)}
+                                className="opacity-0 group-hover:opacity-100 text-red-600 hover:text-red-800 text-sm transition-opacity"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
               <textarea
                 id="prompt"
                 value={prompt}
@@ -353,12 +547,20 @@ export default function Home() {
                       <span className="text-sm text-gray-600 font-medium">
                         Image {index + 1}
                       </span>
-                      <button
-                        onClick={() => downloadImage(image, index)}
-                        className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                      >
-                        Download
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleUseGeneratedImage(image, index)}
+                          className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
+                        >
+                          Use Image
+                        </button>
+                        <button
+                          onClick={() => downloadImage(image, index)}
+                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
+                        >
+                          Download
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

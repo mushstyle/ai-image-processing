@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Gemini Image Processor",
-  description: "Process and transform images using Google's Gemini AI",
+  title: "Mush: Nano Banana",
+  description: "Process and transform images using Mush AI",
 };
 
 export default function RootLayout({
