@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent, ChangeEvent, useRef } from 'react';
+import { convertToJpeg } from '../lib/convertToJpeg';
 
 interface OutputImage {
   data: string;
@@ -13,6 +14,7 @@ type ImageInput = {
   url?: string;
   fileName?: string;
   preview?: string;
+  wasConverted?: boolean;
 };
 
 export default function Home() {
@@ -44,9 +46,10 @@ export default function Home() {
     });
 
     try {
-      const response = await fetch('/api/gemini', {
+      const response = await fetch(`/api/gemini?t=${Date.now()}`, {
         method: 'POST',
         body: formData,
+        cache: 'no-store',
       });
 
       const data = await response.json();
@@ -56,8 +59,8 @@ export default function Home() {
       }
 
       setResults(data.images);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -76,44 +79,54 @@ export default function Home() {
     setImageInputs(imageInputs.filter(input => input.id !== id));
   };
 
+
   const handleFileSelect = async (id: string, e: ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      // If multiple files selected, update current slot and add new slots for additional files
-      const updatedInputs = [...imageInputs];
-      const currentIndex = updatedInputs.findIndex(input => input.id === id);
+      // Show loading state while converting
+      setLoading(true);
       
-      if (currentIndex !== -1) {
-        // Create preview for first file
-        const firstFilePreview = URL.createObjectURL(files[0]);
+      try {
+        // If multiple files selected, update current slot and add new slots for additional files
+        const updatedInputs = [...imageInputs];
+        const currentIndex = updatedInputs.findIndex(input => input.id === id);
         
-        // Update the current slot with the first file
-        updatedInputs[currentIndex] = {
-          ...updatedInputs[currentIndex],
-          type: 'file',
-          file: files[0],
-          fileName: files[0].name,
-          preview: firstFilePreview
-        };
-        
-        // Add new slots for additional files
-        const newInputs: ImageInput[] = [];
-        for (let i = 1; i < files.length; i++) {
-          const preview = URL.createObjectURL(files[i]);
-          newInputs.push({
-            id: crypto.randomUUID(),
+        if (currentIndex !== -1) {
+          // Convert and create preview for first file
+          const { file: convertedFile, preview, wasConverted } = await convertToJpeg(files[0]);
+          
+          // Update the current slot with the first file
+          updatedInputs[currentIndex] = {
+            ...updatedInputs[currentIndex],
             type: 'file',
-            file: files[i],
-            fileName: files[i].name,
-            preview: preview
-          });
+            file: convertedFile,
+            fileName: convertedFile.name,
+            preview: preview,
+            wasConverted: wasConverted
+          };
+          
+          // Add new slots for additional files
+          const newInputs: ImageInput[] = [];
+          for (let i = 1; i < files.length; i++) {
+            const { file: convertedFile, preview, wasConverted } = await convertToJpeg(files[i]);
+            newInputs.push({
+              id: crypto.randomUUID(),
+              type: 'file',
+              file: convertedFile,
+              fileName: convertedFile.name,
+              preview: preview,
+              wasConverted: wasConverted
+            });
+          }
+          
+          // Insert new inputs after the current one
+          updatedInputs.splice(currentIndex + 1, 0, ...newInputs);
         }
         
-        // Insert new inputs after the current one
-        updatedInputs.splice(currentIndex + 1, 0, ...newInputs);
+        setImageInputs(updatedInputs);
+      } finally {
+        setLoading(false);
       }
-      
-      setImageInputs(updatedInputs);
     }
   };
 
@@ -196,7 +209,7 @@ export default function Home() {
                 Input Images
               </label>
               <div className="space-y-3">
-                {imageInputs.map((input, index) => (
+                {imageInputs.map((input) => (
                   <div key={input.id} className="flex gap-2">
                     {/* Thumbnail Preview */}
                     {input.preview && (
@@ -245,6 +258,9 @@ export default function Home() {
                         <div className="flex items-center px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
                           <span className="flex-1 text-sm text-gray-700">
                             📁 {input.fileName}
+                            {input.wasConverted && (
+                              <span className="ml-2 text-xs text-blue-600">(converted from HEIC)</span>
+                            )}
                           </span>
                           <button
                             type="button"
@@ -277,7 +293,7 @@ export default function Home() {
                 + Add another image
               </button>
               <p className="mt-2 text-xs text-gray-500">
-                Tip: You can select multiple files at once when browsing • HEIC/HEIF files are automatically converted
+                Tip: You can select multiple files at once • HEIC/HEIF files are converted to JPEG automatically
               </p>
             </div>
 
