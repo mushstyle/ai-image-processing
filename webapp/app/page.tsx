@@ -3,7 +3,6 @@
 import { useState, FormEvent } from 'react';
 
 interface OutputImage {
-  filename: string;
   data: string;
 }
 
@@ -11,8 +10,6 @@ export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [files, setFiles] = useState<FileList | null>(null);
   const [urls, setUrls] = useState<string[]>(['']);
-  const [outputDir, setOutputDir] = useState('outputs');
-  const [outputPrefix, setOutputPrefix] = useState('gemini_out_');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<OutputImage[]>([]);
   const [error, setError] = useState('');
@@ -25,8 +22,6 @@ export default function Home() {
 
     const formData = new FormData();
     formData.append('prompt', prompt);
-    formData.append('outputDir', outputDir);
-    formData.append('outputPrefix', outputPrefix);
 
     // Add files
     if (files) {
@@ -76,17 +71,17 @@ export default function Home() {
     setUrls(urls.filter((_, i) => i !== index));
   };
 
-  const downloadImage = (image: OutputImage) => {
+  const downloadImage = (image: OutputImage, index: number) => {
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${image.data}`;
-    link.download = image.filename;
+    link.download = `gemini_output_${index + 1}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const downloadAll = () => {
-    results.forEach(image => downloadImage(image));
+    results.forEach((image, index) => downloadImage(image, index));
   };
 
   return (
@@ -168,36 +163,6 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Output Settings */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="outputDir" className="block text-sm font-medium text-gray-700 mb-2">
-                  Output Directory
-                </label>
-                <input
-                  id="outputDir"
-                  type="text"
-                  value={outputDir}
-                  onChange={(e) => setOutputDir(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="outputs"
-                />
-              </div>
-              <div>
-                <label htmlFor="outputPrefix" className="block text-sm font-medium text-gray-700 mb-2">
-                  Output Prefix
-                </label>
-                <input
-                  id="outputPrefix"
-                  type="text"
-                  value={outputPrefix}
-                  onChange={(e) => setOutputPrefix(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="gemini_out_"
-                />
-              </div>
-            </div>
-
             {/* Submit Button */}
             <button
               type="submit"
@@ -247,15 +212,15 @@ export default function Home() {
                   <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
                     <img
                       src={`data:image/png;base64,${image.data}`}
-                      alt={image.filename}
+                      alt={`Generated image ${index + 1}`}
                       className="w-full h-auto"
                     />
                     <div className="p-4 bg-gray-50 flex justify-between items-center">
                       <span className="text-sm text-gray-600 font-medium">
-                        {image.filename}
+                        Image {index + 1}
                       </span>
                       <button
-                        onClick={() => downloadImage(image)}
+                        onClick={() => downloadImage(image, index)}
                         className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
                       >
                         Download

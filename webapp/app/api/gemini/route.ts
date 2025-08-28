@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from "@google/genai";
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
-import { join, dirname, extname, basename } from 'path';
+import { writeFileSync, readFileSync } from 'fs';
+import { join, extname } from 'path';
 import { tmpdir } from 'os';
 
 const mimeFor = (filename: string): string => {
@@ -11,28 +11,6 @@ const mimeFor = (filename: string): string => {
   if (ext === ".webp") return "image/webp";
   if (ext === ".gif") return "image/gif";
   return "application/octet-stream";
-};
-
-const getAvailableFilename = (basePath: string): string => {
-  if (!existsSync(basePath)) {
-    return basePath;
-  }
-  
-  const dir = dirname(basePath);
-  const ext = extname(basePath);
-  const nameWithoutExt = basename(basePath, ext);
-  
-  const match = nameWithoutExt.match(/^(.+?)_?(\d+)$/);
-  let baseName = match ? match[1] : nameWithoutExt;
-  let counter = match ? parseInt(match[2], 10) : 1;
-  
-  let newPath = basePath;
-  while (existsSync(newPath)) {
-    counter++;
-    newPath = join(dir, `${baseName}_${counter}${ext}`);
-  }
-  
-  return newPath;
 };
 
 async function downloadImage(url: string): Promise<Buffer> {
@@ -48,8 +26,6 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const prompt = formData.get('prompt') as string;
-    const outputDir = formData.get('outputDir') as string || 'outputs';
-    const outputPrefix = formData.get('outputPrefix') as string || 'gemini_out_';
     
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -109,17 +85,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Process output images
-    const outputImages: { filename: string; data: string }[] = [];
-    let i = 1;
+    const outputImages: { data: string }[] = [];
     
     for (const part of res.candidates?.[0]?.content?.parts ?? []) {
       if (part.inlineData?.data) {
-        const filename = `${outputPrefix}${i}.png`;
         outputImages.push({
-          filename,
           data: part.inlineData.data
         });
-        i++;
       }
     }
     
