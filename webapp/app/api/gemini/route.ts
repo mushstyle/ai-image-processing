@@ -1,26 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from "@google/genai";
 import { writeFileSync, readFileSync } from 'fs';
-import { join, extname } from 'path';
+import { join } from 'path';
 import { tmpdir } from 'os';
-
-const mimeFor = (filename: string): string => {
-  const ext = extname(filename).toLowerCase();
-  if (ext === ".png") return "image/png";
-  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
-  if (ext === ".webp") return "image/webp";
-  if (ext === ".gif") return "image/gif";
-  return "application/octet-stream";
-};
-
-async function downloadImage(url: string): Promise<Buffer> {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${response.status}`);
-  }
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
-}
+import { 
+  processImageBuffer, 
+  downloadAndProcessImage,
+  mimeFor 
+} from '../../../../src/utils/image-converter';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,8 +32,12 @@ export async function POST(request: NextRequest) {
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      const tempPath = join(tmpdir(), `gemini_upload_${Date.now()}_${file.name}`);
-      writeFileSync(tempPath, buffer);
+      
+      // Process image (convert HEIC if needed)
+      const processed = await processImageBuffer(buffer, file.name);
+      
+      const tempPath = join(tmpdir(), `gemini_upload_${Date.now()}_${processed.filename}`);
+      writeFileSync(tempPath, processed.buffer);
       inputPaths.push(tempPath);
       tempFiles.push(tempPath);
     }
@@ -55,9 +46,11 @@ export async function POST(request: NextRequest) {
     const urls = formData.getAll('urls') as string[];
     for (const url of urls) {
       if (url && url.trim()) {
-        const buffer = await downloadImage(url);
-        const tempPath = join(tmpdir(), `gemini_url_${Date.now()}.png`);
-        writeFileSync(tempPath, buffer);
+        // Download and process image (convert HEIC if needed)
+        const processed = await downloadAndProcessImage(url);
+        
+        const tempPath = join(tmpdir(), `gemini_url_${Date.now()}_${processed.filename}`);
+        writeFileSync(tempPath, processed.buffer);
         inputPaths.push(tempPath);
         tempFiles.push(tempPath);
       }
@@ -70,7 +63,7 @@ export async function POST(request: NextRequest) {
     // Call Gemini API
     const ai = new GoogleGenAI({ apiKey });
     
-    const contents = [{ text: prompt }].concat(
+    const contents: any[] = [{ text: prompt }].concat(
       inputPaths.map((p) => ({
         inlineData: {
           mimeType: mimeFor(p),

@@ -5,6 +5,7 @@ import {
   readLocalImage,
   generateOutputFilename
 } from '../src/utils/image.js';
+import { downloadAndProcessImage, processImageBuffer } from '../src/utils/image-converter.js';
 import { writeFileSync, existsSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { mkdirSync } from 'fs';
@@ -70,16 +71,20 @@ Examples:
 
 async function prepareImage(imagePath: string): Promise<string> {
   try {
-    let imageBuffer: Buffer;
-    const tempPath = resolve('temp', `gemini_input_${Date.now()}_${Math.random().toString(36).substring(7)}.png`);
+    let processed: { buffer: Buffer; filename: string; mimeType: string };
     
     if (isLocalFile(imagePath)) {
       console.log(`📂 Reading local image: ${imagePath}`);
-      imageBuffer = readLocalImage(imagePath);
+      const imageBuffer = readLocalImage(imagePath);
+      const filename = imagePath.split('/').pop() || 'image.png';
+      processed = await processImageBuffer(imageBuffer, filename);
     } else {
       console.log(`📥 Downloading image from: ${imagePath}`);
-      imageBuffer = await fetchImageFromUrl(imagePath);
+      processed = await downloadAndProcessImage(imagePath);
     }
+    
+    // Generate temp path with processed filename
+    const tempPath = resolve('temp', `gemini_input_${Date.now()}_${processed.filename}`);
     
     // Ensure temp directory exists
     const tempDir = dirname(tempPath);
@@ -88,8 +93,11 @@ async function prepareImage(imagePath: string): Promise<string> {
     }
     
     // Save to temporary file for Gemini processing
-    writeFileSync(tempPath, imageBuffer);
+    writeFileSync(tempPath, processed.buffer);
     console.log(`✅ Prepared image for processing: ${tempPath}`);
+    if (processed.filename.endsWith('.jpg') && !imagePath.toLowerCase().endsWith('.jpg')) {
+      console.log(`   📋 Converted from HEIC/HEIF to JPEG`);
+    }
     
     return tempPath;
   } catch (error: any) {

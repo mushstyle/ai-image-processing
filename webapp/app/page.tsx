@@ -234,7 +234,7 @@ export default function Home() {
                               ref={(el) => { fileInputRefs.current[input.id] = el; }}
                               type="file"
                               multiple
-                              accept="image/*"
+                              accept="image/*,.heic,.heif"
                               onChange={(e) => handleFileSelect(input.id, e)}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                               title="Click to select files"
@@ -277,7 +277,7 @@ export default function Home() {
                 + Add another image
               </button>
               <p className="mt-2 text-xs text-gray-500">
-                Tip: You can select multiple files at once when browsing
+                Tip: You can select multiple files at once when browsing • HEIC/HEIF files are automatically converted
               </p>
             </div>
 
