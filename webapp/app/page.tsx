@@ -182,23 +182,31 @@ export default function Home() {
                   <div key={input.id} className="flex gap-2">
                     <div className="flex-1">
                       {input.type === 'empty' || input.type === 'url' ? (
-                        <div className="relative">
+                        <div className="flex gap-2">
                           <input
                             type="url"
                             value={input.url || ''}
                             onChange={(e) => handleUrlInput(input.id, e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="Paste image URL or click to browse files..."
+                            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Paste image URL here..."
                           />
-                          <input
-                            ref={(el) => { fileInputRefs.current[input.id] = el; }}
-                            type="file"
-                            multiple
-                            accept="image/*"
-                            onChange={(e) => handleFileSelect(input.id, e)}
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            title="Click to select files"
-                          />
+                          <div className="relative">
+                            <button
+                              type="button"
+                              className="px-4 py-3 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-lg transition-colors text-sm font-medium"
+                            >
+                              Browse Files
+                            </button>
+                            <input
+                              ref={(el) => { fileInputRefs.current[input.id] = el; }}
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => handleFileSelect(input.id, e)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              title="Click to select files"
+                            />
+                          </div>
                         </div>
                       ) : input.type === 'file' ? (
                         <div className="flex items-center px-4 py-3 border border-gray-300 rounded-lg bg-gray-50">
@@ -236,7 +244,7 @@ export default function Home() {
                 + Add another image
               </button>
               <p className="mt-2 text-xs text-gray-500">
-                Tip: You can select multiple files at once or drag & drop
+                Tip: You can select multiple files at once when browsing
               </p>
             </div>
 
