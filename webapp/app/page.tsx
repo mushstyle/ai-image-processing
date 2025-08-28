@@ -322,8 +322,8 @@ export default function Home() {
         </div>
       )}
       
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
+      <div className="max-w-7xl mx-auto">
+        <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Mush Image Processor
           </h1>
@@ -332,7 +332,10 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="bg-white shadow-xl rounded-2xl p-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left side - Input Form */}
+          <div className="lg:w-1/2 xl:w-2/5">
+            <div className="bg-white shadow-xl rounded-2xl p-6 sticky top-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Prompt Input */}
             <div>
@@ -343,11 +346,25 @@ export default function Home() {
                 <div className="flex gap-2">
                   <button
                     type="button"
+                    onClick={() => setPrompt('')}
+                    title="Clear prompt"
+                    className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                      <line x1="8" y1="8" x2="16" y2="16" strokeWidth="2"/>
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
                     onClick={savePrompt}
                     disabled={!prompt.trim()}
-                    className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-400"
+                    title="Save prompt"
+                    className="p-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors disabled:bg-gray-400"
                   >
-                    Save Prompt
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17 3H5C3.89 3 3 3.9 3 5V19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V7L17 3M19 19H5V5H16.17L19 7.83V19M12 12C10.34 12 9 13.34 9 15S10.34 18 12 18 15 16.66 15 15 13.66 12 12 12M6 6H15V10H6V6Z"/>
+                    </svg>
                   </button>
                   <div className="relative prompt-dropdown-container">
                     <button
@@ -511,62 +528,80 @@ export default function Home() {
             </button>
           </form>
 
-          {/* Error Display */}
-          {error && (
-            <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-800">{error}</p>
+              {/* Error Display - Inside left column on mobile */}
+              {error && (
+                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg lg:hidden">
+                  <p className="text-red-800">{error}</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
-          {/* Results Display */}
-          {results.length > 0 && (
-            <div className="mt-8 space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-900">
-                  Generated Images ({results.length})
-                </h2>
-                {results.length > 1 && (
-                  <button
-                    onClick={downloadAll}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    Download All
-                  </button>
-                )}
+          {/* Right side - Results */}
+          <div className="lg:w-1/2 xl:w-3/5">
+            {/* Error Display - In right column on desktop */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4 hidden lg:block">
+                <p className="text-red-800">{error}</p>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {results.map((image, index) => (
-                  <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
-                    <img
-                      src={`data:image/png;base64,${image.data}`}
-                      alt={`Generated image ${index + 1}`}
-                      className="w-full h-auto"
-                    />
-                    <div className="p-4 bg-gray-50 flex justify-between items-center">
-                      <span className="text-sm text-gray-600 font-medium">
-                        Image {index + 1}
-                      </span>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleUseGeneratedImage(image, index)}
-                          className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 transition-colors"
-                        >
-                          Use Image
-                        </button>
-                        <button
-                          onClick={() => downloadImage(image, index)}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                        >
-                          Download
-                        </button>
+            )}
+
+            {/* Results Display */}
+            {results.length > 0 ? (
+              <div className="bg-white shadow-xl rounded-2xl p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Generated Images ({results.length})
+                  </h2>
+                  {results.length > 1 && (
+                    <button
+                      onClick={downloadAll}
+                      className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Download All
+                    </button>
+                  )}
+                </div>
+                
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  {results.map((image, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg overflow-hidden">
+                      <img
+                        src={`data:image/png;base64,${image.data}`}
+                        alt={`Generated image ${index + 1}`}
+                        className="w-full h-auto"
+                      />
+                      <div className="p-3 bg-gray-50 flex justify-between items-center">
+                        <span className="text-sm text-gray-600 font-medium">
+                          Image {index + 1}
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUseGeneratedImage(image, index)}
+                            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                          >
+                            Use Image
+                          </button>
+                          <button
+                            onClick={() => downloadImage(image, index)}
+                            className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                          >
+                            Download
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            ) : (
+              !loading && (
+                <div className="bg-white shadow-xl rounded-2xl p-12 text-center">
+                  <p className="text-gray-500">Generated images will appear here</p>
+                </div>
+              )
+            )}
+          </div>
         </div>
       </div>
     </div>
