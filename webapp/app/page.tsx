@@ -305,9 +305,8 @@ export default function Home() {
     }
   };
 
-  const hasValidInputs = imageInputs.some(input => 
-    (input.type === 'file' && input.file) || (input.type === 'url' && input.url)
-  );
+  // Allow processing with just a prompt (no images required)
+  const hasValidInputs = prompt.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4 sm:px-6 lg:px-8">
@@ -324,12 +323,9 @@ export default function Home() {
       
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Mush Image Processor
-          </h1>
-          <p className="text-lg text-gray-600">
-            Process images with Mush AI
-          </p>
+          <h3 className="text-4xl font-bold text-gray-900 mb-2">
+            Mush: Nano Banana Workshop
+          </h3>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -410,7 +406,6 @@ export default function Home() {
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                 placeholder="e.g., Extract all objects separately, Remove background and add studio lighting..."
-                required
               />
             </div>
 
@@ -530,8 +525,16 @@ export default function Home() {
 
               {/* Error Display - Inside left column on mobile */}
               {error && (
-                <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-lg lg:hidden">
-                  <p className="text-red-800">{error}</p>
+                <div className="mt-6 p-4 bg-red-50 border-2 border-red-300 rounded-lg lg:hidden">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                    </svg>
+                    <div>
+                      <p className="text-red-800 font-medium">Error</p>
+                      <p className="text-red-700 text-sm mt-1">{error}</p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -541,8 +544,16 @@ export default function Home() {
           <div className="lg:w-1/2 xl:w-3/5">
             {/* Error Display - In right column on desktop */}
             {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-4 hidden lg:block">
-                <p className="text-red-800">{error}</p>
+              <div className="p-4 bg-red-50 border-2 border-red-300 rounded-lg mb-4 hidden lg:block">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-red-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/>
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-red-800 font-medium">Error</p>
+                    <p className="text-red-700 text-sm mt-1 break-words">{error}</p>
+                  </div>
+                </div>
               </div>
             )}
 

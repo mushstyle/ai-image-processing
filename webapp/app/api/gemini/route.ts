@@ -63,11 +63,7 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    if (inputPaths.length === 0) {
-      return NextResponse.json({ error: 'At least one image is required' }, { status: 400 });
-    }
-
-    // Call Gemini API
+    // Call Gemini API (allow prompt-only requests)
     const ai = new GoogleGenAI({ apiKey });
     
     const contents = [
@@ -114,9 +110,33 @@ export async function POST(request: NextRequest) {
     
   } catch (error: unknown) {
     console.error('Gemini API error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Failed to process images';
+    
+    // Extract more detailed error message
+    let errorMessage = 'Failed to process images';
+    let errorDetails = '';
+    
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Check for Gemini-specific error details
+      if ('response' in error && error.response) {
+        const response = error.response as { data?: { error?: { message?: string } } };
+        if (response.data?.error?.message) {
+          errorDetails = response.data.error.message;
+        }
+      }
+      
+      // Check for other common error properties
+      if ('details' in error) {
+        errorDetails = String(error.details);
+      }
+    }
+    
+    // Combine message and details for full context
+    const fullError = errorDetails ? `${errorMessage}: ${errorDetails}` : errorMessage;
+    
     return NextResponse.json(
-      { error: errorMessage },
+      { error: fullError },
       { status: 500 }
     );
   }
