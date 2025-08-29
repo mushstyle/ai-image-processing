@@ -79,6 +79,9 @@ export async function POST(request: NextRequest) {
     const res = await ai.models.generateContent({
       model: "gemini-2.5-flash-image-preview",
       contents,
+      generationConfig: {
+        temperature: 0,  // Deterministic output - pick most likely choices
+      },
     });
 
     // Process output images
