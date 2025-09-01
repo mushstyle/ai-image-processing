@@ -158,7 +158,15 @@ export default function Home() {
     
     setImageInputs(imageInputs.map(input => 
       input.id === id 
-        ? { id: input.id, type: 'empty' }
+        ? { 
+            id: input.id, 
+            type: 'empty',
+            file: undefined,
+            url: undefined,
+            fileName: undefined,
+            preview: undefined,
+            wasConverted: undefined
+          }
         : input
     ));
     // Reset the file input
