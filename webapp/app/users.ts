@@ -5,6 +5,7 @@ export const ALLOWED_EMAIL_ADDRESSES = [
   "tim@mush.style",
   "anna@mush.style",
   "willbach@gmail.com",
+  "fabnev.hinmur@gmail.com",
   "timgalebachukraine@gmail.com",
   "d.venhreniuk@gmail.com",
   "jesse@hyperware.ai",
@@ -12,6 +13,7 @@ export const ALLOWED_EMAIL_ADDRESSES = [
   "tim@hyperware.ai",
   "volodymyrsvchuk@gmail.com",
   "lizadudina14@gmail.com",
-  "jul.sergeevna08@gmail.com"
+  "jul.sergeevna08@gmail.com",
+  "ekaterina.tovstanovskaya98@gmail.com",
   // Add more emails as needed
 ];
