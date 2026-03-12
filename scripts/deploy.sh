@@ -14,10 +14,10 @@ npm run build
 rsync -az --delete \
   --exclude '.git' \
   --exclude 'node_modules' \
-  --exclude '.next' \
   --exclude 'webapp' \
   --exclude 'outputs' \
   --exclude 'temp' \
+  --exclude 'dist' \
   --exclude '.env.local' \
   --exclude 'data/prompts.json' \
   ./ "${SSH_HOST}:${REMOTE_PATH}/"
@@ -43,6 +43,6 @@ Deploy complete.
 
 Ensure the server Caddyfile contains:
 
-$(cat "$ROOT_DIR/deploy/Caddyfile.banana.mush.style")
+$(cat "$ROOT_DIR/deploy/Caddyfile.banana1.mush.style")
 
 EOF

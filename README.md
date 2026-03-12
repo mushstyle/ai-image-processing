@@ -2,7 +2,7 @@
 
 Private internal playground for testing AI image generation and image-conditioned prompting.
 
-This repo is now a single Next.js app for the private "Nano Banana" workshop UI. It is focused on Gemini image experiments with prompts, uploaded images, pasted images, and image URLs.
+This repo is a Vite React frontend plus a single Express backend for the private "Nano Banana" workshop UI. It is focused on Gemini image experiments with prompts, uploaded images, pasted images, and image URLs.
 
 ## What It Does
 
@@ -26,18 +26,18 @@ npm install
 npm run dev
 ```
 
-Then open `http://localhost:3000`.
+Then open `http://127.0.0.1:5173`.
 
 ## Deploy Notes
 
 - Host: `mush-etl`
-- Domain: `banana.mush.style`
+- Domain: `banana1.mush.style`
 - Remote path: `/root/pkg/nano-banana`
 - Port: `3001`
-- Reverse proxy: Caddy should point `banana.mush.style` to `localhost:3001`
+- Reverse proxy: Caddy should point `banana1.mush.style` to `localhost:3001`
 - Runtime: source NVM on the server before starting the app
 - Required Node version on the server: `>= 22.10.0`
-- Process model: internal-use manual `next start` via the scripts in `scripts/`
+- Process model: internal-use manual `node dist/server/index.js` via the scripts in `scripts/`
 
 ## Notes
 

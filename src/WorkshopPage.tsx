@@ -1,22 +1,17 @@
-'use client';
-
 import {
-  ChangeEvent,
-  FormEvent,
-  MouseEvent as ReactMouseEvent,
+  type ChangeEvent,
+  type FormEvent,
+  type MouseEvent as ReactMouseEvent,
+  useCallback,
   useEffect,
   useRef,
   useState,
-} from 'react';
-import { convertToJpeg } from '@/lib/convertToJpeg';
-import type { SavedPrompt } from '@/lib/prompt-store';
+} from "react";
 
-interface OutputImage {
-  data: string;
-  mimeType: string;
-}
+import { convertToJpeg } from "./lib/convertToJpeg";
+import type { ApiFetch, OutputImage, SavedPrompt } from "./types";
 
-type InputKind = 'empty' | 'file' | 'url';
+type InputKind = "empty" | "file" | "url";
 
 type ImageInput = {
   id: string;
@@ -30,29 +25,29 @@ type ImageInput = {
 
 type Toast = {
   message: string;
-  type: 'success' | 'error';
+  type: "success" | "error";
 };
 
 function createEmptyInput(): ImageInput {
-  return { id: crypto.randomUUID(), kind: 'empty' };
+  return { id: crypto.randomUUID(), kind: "empty" };
 }
 
 function revokePreview(input?: ImageInput): void {
-  if (input?.kind === 'file' && input.preview?.startsWith('blob:')) {
+  if (input?.kind === "file" && input.preview?.startsWith("blob:")) {
     URL.revokeObjectURL(input.preview);
   }
 }
 
 function fileExtensionForMimeType(mimeType: string): string {
   switch (mimeType) {
-    case 'image/jpeg':
-      return 'jpg';
-    case 'image/webp':
-      return 'webp';
-    case 'image/gif':
-      return 'gif';
+    case "image/jpeg":
+      return "jpg";
+    case "image/webp":
+      return "webp";
+    case "image/gif":
+      return "gif";
     default:
-      return 'png';
+      return "png";
   }
 }
 
@@ -60,22 +55,39 @@ function imageDataUrl(image: OutputImage): string {
   return `data:${image.mimeType};base64,${image.data}`;
 }
 
-export default function Home() {
-  const [prompt, setPrompt] = useState('');
+export default function WorkshopPage({
+  apiFetch,
+}: {
+  apiFetch: ApiFetch;
+}) {
+  const [prompt, setPrompt] = useState("");
   const [imageInputs, setImageInputs] = useState<ImageInput[]>([createEmptyInput()]);
   const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
   const [results, setResults] = useState<OutputImage[]>([]);
   const [notes, setNotes] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showPromptDropdown, setShowPromptDropdown] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   const [pasteTargetId, setPasteTargetId] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  const loadPrompts = useCallback(async (): Promise<void> => {
+    try {
+      const response = await apiFetch("/api/prompts");
+      const data = (await response.json()) as { prompts?: SavedPrompt[] };
+
+      if (response.ok) {
+        setSavedPrompts(data.prompts ?? []);
+      }
+    } catch (loadError) {
+      console.error("Failed to load prompts:", loadError);
+    }
+  }, [apiFetch]);
+
   useEffect(() => {
     void loadPrompts();
-  }, []);
+  }, [loadPrompts]);
 
   useEffect(() => {
     if (!toast) {
@@ -93,13 +105,13 @@ export default function Home() {
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.prompt-dropdown-container')) {
+      if (!target.closest(".prompt-dropdown-container")) {
         setShowPromptDropdown(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showPromptDropdown]);
 
   useEffect(() => {
@@ -109,7 +121,7 @@ export default function Home() {
       }
 
       const imageItem = Array.from(event.clipboardData?.items ?? []).find((item) =>
-        item.type.startsWith('image/'),
+        item.type.startsWith("image/"),
       );
 
       if (!imageItem) {
@@ -125,14 +137,14 @@ export default function Home() {
       setLoading(true);
 
       try {
-        const extension = blob.type.split('/')[1] || 'png';
+        const extension = blob.type.split("/")[1] || "png";
         const file = new File([blob], `pasted-image-${Date.now()}.${extension}`, {
           type: blob.type,
         });
-        const converted = await convertToJpeg(file);
+        const converted = await convertToJpeg(file, apiFetch);
 
         replaceInput(pasteTargetId, {
-          kind: 'file',
+          kind: "file",
           file: converted.file,
           fileName: converted.file.name,
           preview: converted.preview,
@@ -141,33 +153,20 @@ export default function Home() {
         });
 
         setPasteTargetId(null);
-        setToast({ message: 'Image pasted successfully', type: 'success' });
+        setToast({ message: "Image pasted successfully", type: "success" });
       } catch (pasteError) {
-        console.error('Error pasting image:', pasteError);
-        setToast({ message: 'Failed to paste image', type: 'error' });
+        console.error("Error pasting image:", pasteError);
+        setToast({ message: "Failed to paste image", type: "error" });
       } finally {
         setLoading(false);
       }
     };
 
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
-  }, [pasteTargetId]);
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [apiFetch, pasteTargetId]);
 
-  async function loadPrompts(): Promise<void> {
-    try {
-      const response = await fetch('/api/prompts', { cache: 'no-store' });
-      const data = (await response.json()) as { prompts?: SavedPrompt[] };
-
-      if (response.ok) {
-        setSavedPrompts(data.prompts ?? []);
-      }
-    } catch (loadError) {
-      console.error('Failed to load prompts:', loadError);
-    }
-  }
-
-  function replaceInput(id: string, nextState: Omit<ImageInput, 'id'>): void {
+  function replaceInput(id: string, nextState: Omit<ImageInput, "id">): void {
     setImageInputs((current) =>
       current.map((input) => {
         if (input.id !== id) {
@@ -207,7 +206,7 @@ export default function Home() {
 
     try {
       const convertedFiles = await Promise.all(
-        Array.from(selectedFiles).map((file) => convertToJpeg(file)),
+        Array.from(selectedFiles).map((file) => convertToJpeg(file, apiFetch)),
       );
 
       setImageInputs((current) => {
@@ -221,7 +220,7 @@ export default function Home() {
 
         nextInputs[currentIndex] = {
           id,
-          kind: 'file',
+          kind: "file",
           file: convertedFiles[0].file,
           fileName: convertedFiles[0].file.name,
           preview: convertedFiles[0].preview,
@@ -230,7 +229,7 @@ export default function Home() {
 
         const additionalInputs = convertedFiles.slice(1).map((converted) => ({
           id: crypto.randomUUID(),
-          kind: 'file' as const,
+          kind: "file" as const,
           file: converted.file,
           fileName: converted.file.name,
           preview: converted.preview,
@@ -250,7 +249,7 @@ export default function Home() {
       id,
       url
         ? {
-            kind: 'url',
+            kind: "url",
             url,
             preview: url,
             file: undefined,
@@ -258,7 +257,7 @@ export default function Home() {
             wasConverted: undefined,
           }
         : {
-            kind: 'empty',
+            kind: "empty",
             url: undefined,
             preview: undefined,
             file: undefined,
@@ -270,7 +269,7 @@ export default function Home() {
 
   function resetInput(id: string): void {
     replaceInput(id, {
-      kind: 'empty',
+      kind: "empty",
       file: undefined,
       fileName: undefined,
       preview: undefined,
@@ -279,35 +278,34 @@ export default function Home() {
     });
 
     if (fileInputRefs.current[id]) {
-      fileInputRefs.current[id]!.value = '';
+      fileInputRefs.current[id]!.value = "";
     }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
     setResults([]);
     setNotes([]);
 
     try {
       const formData = new FormData();
-      formData.append('prompt', prompt);
+      formData.append("prompt", prompt);
 
       for (const input of imageInputs) {
-        if (input.kind === 'file' && input.file) {
-          formData.append('files', input.file);
+        if (input.kind === "file" && input.file) {
+          formData.append("files", input.file);
         }
 
-        if (input.kind === 'url' && input.url) {
-          formData.append('urls', input.url);
+        if (input.kind === "url" && input.url) {
+          formData.append("urls", input.url);
         }
       }
 
-      const response = await fetch('/api/gemini', {
-        method: 'POST',
+      const response = await apiFetch("/api/gemini", {
+        method: "POST",
         body: formData,
-        cache: 'no-store',
       });
       const data = (await response.json()) as {
         error?: string;
@@ -316,14 +314,16 @@ export default function Home() {
       };
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to process images');
+        throw new Error(data.error || "Failed to process images");
       }
 
       setResults(data.images ?? []);
       setNotes(data.notes ?? []);
     } catch (submitError) {
       setError(
-        submitError instanceof Error ? submitError.message : 'An unknown error occurred',
+        submitError instanceof Error
+          ? submitError.message
+          : "An unknown error occurred",
       );
     } finally {
       setLoading(false);
@@ -336,21 +336,21 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('/api/prompts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await apiFetch("/api/prompts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: prompt }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save prompt');
+        throw new Error("Failed to save prompt");
       }
 
       await loadPrompts();
-      setToast({ message: 'Prompt saved', type: 'success' });
+      setToast({ message: "Prompt saved", type: "success" });
     } catch (saveError) {
-      console.error('Failed to save prompt:', saveError);
-      setToast({ message: 'Failed to save prompt', type: 'error' });
+      console.error("Failed to save prompt:", saveError);
+      setToast({ message: "Failed to save prompt", type: "error" });
     }
   }
 
@@ -361,26 +361,28 @@ export default function Home() {
     event.preventDefault();
     event.stopPropagation();
 
-    if (!confirm('Delete this saved prompt?')) {
+    if (!window.confirm("Delete this saved prompt?")) {
       return;
     }
 
     try {
-      const response = await fetch(`/api/prompts?id=${id}`, { method: 'DELETE' });
+      const response = await apiFetch(`/api/prompts?id=${id}`, {
+        method: "DELETE",
+      });
       if (!response.ok) {
-        throw new Error('Failed to delete prompt');
+        throw new Error("Failed to delete prompt");
       }
 
       await loadPrompts();
     } catch (deleteError) {
-      console.error('Failed to delete prompt:', deleteError);
-      setToast({ message: 'Failed to delete prompt', type: 'error' });
+      console.error("Failed to delete prompt:", deleteError);
+      setToast({ message: "Failed to delete prompt", type: "error" });
     }
   }
 
   function downloadImage(image: OutputImage, index: number): void {
     const extension = fileExtensionForMimeType(image.mimeType);
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = imageDataUrl(image);
     link.download = `nano_banana_output_${index + 1}.${extension}`;
     document.body.appendChild(link);
@@ -403,7 +405,7 @@ export default function Home() {
       const preview = URL.createObjectURL(blob);
       const generatedInput: ImageInput = {
         id: crypto.randomUUID(),
-        kind: 'file',
+        kind: "file",
         file: new File([blob], `generated_${index + 1}.${extension}`, {
           type: image.mimeType,
         }),
@@ -413,7 +415,7 @@ export default function Home() {
       };
 
       setImageInputs((current) => {
-        const emptyIndex = current.findIndex((input) => input.kind === 'empty');
+        const emptyIndex = current.findIndex((input) => input.kind === "empty");
         if (emptyIndex === -1) {
           return [...current, generatedInput];
         }
@@ -423,10 +425,10 @@ export default function Home() {
         return nextInputs;
       });
 
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (useImageError) {
-      console.error('Failed to reuse generated image:', useImageError);
-      setToast({ message: 'Failed to reuse generated image', type: 'error' });
+      console.error("Failed to reuse generated image:", useImageError);
+      setToast({ message: "Failed to reuse generated image", type: "error" });
     }
   }
 
@@ -438,7 +440,7 @@ export default function Home() {
         <div className="animate-fade-in fixed right-4 top-4 z-50">
           <div
             className={`rounded-full px-4 py-2 text-sm font-medium text-white shadow-lg ${
-              toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+              toast.type === "success" ? "bg-green-600" : "bg-red-600"
             }`}
           >
             {toast.message}
@@ -475,7 +477,7 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setPrompt('')}
+                        onClick={() => setPrompt("")}
                         title="Clear prompt"
                         className="rounded-full border border-red-200 px-3 py-1.5 text-sm text-red-700 transition hover:bg-red-50"
                       >
@@ -571,24 +573,24 @@ export default function Home() {
                               alt="Selected input preview"
                               className="h-20 w-20 rounded-xl border border-black/10 bg-gray-100 object-contain"
                               onError={(event) => {
-                                event.currentTarget.style.display = 'none';
+                                event.currentTarget.style.display = "none";
                               }}
                             />
                           )}
 
                           <div className="flex-1">
-                            {(input.kind === 'empty' || input.kind === 'url') && (
+                            {(input.kind === "empty" || input.kind === "url") && (
                               <div className="space-y-2">
                                 <div
                                   className={`rounded-xl border ${
                                     pasteTargetId === input.id
-                                      ? 'border-blue-500 ring-2 ring-blue-200'
-                                      : 'border-black/10'
+                                      ? "border-blue-500 ring-2 ring-blue-200"
+                                      : "border-black/10"
                                   }`}
                                 >
                                   <input
                                     type="url"
-                                    value={input.url || ''}
+                                    value={input.url || ""}
                                     onChange={(event) =>
                                       handleUrlInput(input.id, event.target.value)
                                     }
@@ -606,15 +608,15 @@ export default function Home() {
                                       void navigator.clipboard
                                         .readText()
                                         .then((text) => {
-                                          if (text.startsWith('http')) {
+                                          if (text.startsWith("http")) {
                                             handleUrlInput(input.id, text);
                                           }
                                         })
                                         .catch(() => {
                                           setToast({
                                             message:
-                                              'Clipboard text is unavailable here. Paste manually or use Ctrl/Cmd+V.',
-                                            type: 'success',
+                                              "Clipboard text is unavailable here. Paste manually or use Ctrl/Cmd+V.",
+                                            type: "success",
                                           });
                                         });
                                     }}
@@ -646,7 +648,7 @@ export default function Home() {
                               </div>
                             )}
 
-                            {input.kind === 'file' && (
+                            {input.kind === "file" && (
                               <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-gray-50 px-4 py-3">
                                 <div className="min-w-0 flex-1">
                                   <p className="truncate text-sm font-medium text-gray-800">
@@ -700,7 +702,7 @@ export default function Home() {
                   disabled={loading || !hasValidInputs}
                   className="w-full rounded-full bg-amber-500 px-5 py-3 text-base font-semibold text-gray-950 transition hover:bg-amber-400 disabled:bg-gray-300 disabled:text-gray-600"
                 >
-                  {loading ? 'Generating…' : 'Generate images'}
+                  {loading ? "Generating…" : "Generate images"}
                 </button>
               </form>
 
@@ -726,7 +728,7 @@ export default function Home() {
                     Results
                   </p>
                   <h3 className="text-2xl font-semibold text-gray-950">
-                    Generated Images {results.length > 0 ? `(${results.length})` : ''}
+                    Generated Images {results.length > 0 ? `(${results.length})` : ""}
                   </h3>
                 </div>
                 {results.length > 1 && (

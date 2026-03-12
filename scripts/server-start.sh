@@ -10,9 +10,10 @@ require_node_version
 ensure_prompt_store
 
 PORT="${PORT:-$(app_port)}"
-HOST="${HOST:-127.0.0.1}"
+HOST="${HOST:-}"
 PID_FILE="$(pid_file)"
 LOG_FILE="$(log_file)"
+DISPLAY_HOST="${HOST:-0.0.0.0}"
 
 if [[ -f "$PID_FILE" ]]; then
   EXISTING_PID="$(cat "$PID_FILE")"
@@ -25,7 +26,13 @@ if [[ -f "$PID_FILE" ]]; then
 fi
 
 cd "$ROOT_DIR"
-nohup ./node_modules/.bin/next start --hostname "$HOST" --port "$PORT" >>"$LOG_FILE" 2>&1 &
+START_CMD=(env NODE_ENV=production PORT="$PORT" node dist/server/index.js)
+
+if [[ -n "$HOST" ]]; then
+  START_CMD=(env NODE_ENV=production PORT="$PORT" HOST="$HOST" node dist/server/index.js)
+fi
+
+nohup "${START_CMD[@]}" >>"$LOG_FILE" 2>&1 &
 APP_PID=$!
 echo "$APP_PID" >"$PID_FILE"
 
@@ -35,4 +42,4 @@ if ! kill -0 "$APP_PID" 2>/dev/null; then
   exit 1
 fi
 
-echo "nano-banana started on http://$HOST:$PORT with pid $APP_PID"
+echo "nano-banana started on http://$DISPLAY_HOST:$PORT with pid $APP_PID"

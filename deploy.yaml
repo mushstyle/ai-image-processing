@@ -1,6 +1,6 @@
 app_name: nano-banana
 ssh_host: mush-etl
 remote_path: /root/pkg/nano-banana
-domain: banana.mush.style
+domain: banana1.mush.style
 port: 3001
 node_version: 22.14.0

@@ -13,6 +13,12 @@ export interface GenerationResult {
   notes: string[];
 }
 
+export interface InputImageFile {
+  data: Buffer;
+  name: string;
+  mimeType?: string | null;
+}
+
 type InlineImagePart = {
   inlineData: {
     data: string;
@@ -56,19 +62,17 @@ function normalizeMimeType(filename: string, mimeType?: string | null): string {
   }
 }
 
-async function fileToInlinePart(file: File): Promise<InlineImagePart> {
-  const buffer = Buffer.from(await file.arrayBuffer());
-
+function fileToInlinePart(file: InputImageFile): InlineImagePart {
   return {
     inlineData: {
-      data: buffer.toString("base64"),
-      mimeType: normalizeMimeType(file.name, file.type),
+      data: file.data.toString("base64"),
+      mimeType: normalizeMimeType(file.name, file.mimeType),
     },
   };
 }
 
 async function urlToInlinePart(url: string): Promise<InlineImagePart> {
-  const response = await fetch(url, { cache: "no-store" });
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch image URL: ${response.status}`);
@@ -95,7 +99,7 @@ async function urlToInlinePart(url: string): Promise<InlineImagePart> {
 
 export async function generateWorkshopImages(args: {
   prompt: string;
-  files: File[];
+  files: InputImageFile[];
   urls: string[];
 }): Promise<GenerationResult> {
   const prompt = args.prompt.trim();
@@ -107,7 +111,7 @@ export async function generateWorkshopImages(args: {
   const imageParts: InlineImagePart[] = [];
 
   for (const file of args.files) {
-    imageParts.push(await fileToInlinePart(file));
+    imageParts.push(fileToInlinePart(file));
   }
 
   for (const url of args.urls.map((value) => value.trim()).filter(Boolean)) {
