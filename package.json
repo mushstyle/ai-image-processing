@@ -1,26 +1,39 @@
 {
-  "name": "ai-image-processing",
+  "name": "nano-banana",
   "version": "1.0.0",
-  "description": "Simple API endpoint server for AI image processing",
-  "license": "ISC",
-  "author": "",
+  "private": true,
   "type": "module",
-  "main": "index.js",
+  "description": "Private Nano Banana workshop playground",
   "scripts": {
-    "dev": "node --env-file=.env --watch index.js",
-    "start": "node --env-file=.env index.js",
-    "edit": "node --env-file=.env edit-image.js",
-    "gemini-test": "node --env-file=.env --import tsx scripts/test-gemini.ts"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "deploy": "bash ./scripts/deploy.sh",
+    "server:start": "bash ./scripts/server-start.sh",
+    "server:stop": "bash ./scripts/server-stop.sh",
+    "server:restart": "bash ./scripts/server-restart.sh"
+  },
+  "engines": {
+    "node": ">=22.10.0"
   },
   "dependencies": {
-    "@google/genai": "^1.15.0",
-    "express": "^4.21.2",
-    "openai": "^4.74.0",
+    "@clerk/nextjs": "^6.31.6",
+    "@google/genai": "^1.16.0",
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "sharp": "^0.34.3"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.2"
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
